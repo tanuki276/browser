@@ -5,6 +5,24 @@
   --btn-bg: #e5e9f0;
   --hover: #d8dee9;
   --modal-bg: rgba(0, 0, 0, 0.4);
+  --font-size: 16px;
+}
+
+body.dark {
+  --bg: #2e3440;
+  --fg: #eceff4;
+  --btn-bg: #3b4252;
+  --hover: #4c566a;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body.small-font {
+  --font-size: 14px;
+}
+
+body.large-font {
+  --font-size: 18px;
 }
 
 * {
@@ -12,6 +30,7 @@
   padding: 0;
   box-sizing: border-box;
   font-family: sans-serif;
+  font-size: var(--font-size);
 }
 
 body {
@@ -22,24 +41,25 @@ body {
   height: 100vh;
 }
 
-.top-bar,
-.bottom-bar {
+.top-bar {
   background: var(--btn-bg);
   padding: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   z-index: 10;
-}
-
-.top-bar {
   position: sticky;
   top: 0;
 }
 
 .bottom-bar {
-  justify-content: center;
+  background: var(--btn-bg);
+  padding: 8px;
+  display: flex;
+  justify-content: space-around;
+  gap: 8px;
+  box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
   position: sticky;
   bottom: 0;
 }
@@ -51,10 +71,26 @@ button {
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
+  display: flex;
+  align-items: center;
 }
 
 button:hover {
   background: var(--hover);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+input#urlBox {
+  flex-grow: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--hover);
+  border-radius: 8px;
+  background: white;
+  outline: none;
 }
 
 iframe#viewer {
@@ -85,8 +121,14 @@ iframe#viewer {
   border-radius: 12px;
   width: 90%;
   max-width: 400px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
   animation: fadeIn 0.3s ease;
+  color: black;
+}
+
+body.dark #modalContent {
+  background: #3b4252;
+  color: #eceff4;
 }
 
 #modalContent h2 {
@@ -114,46 +156,16 @@ iframe#viewer {
 }
 
 @keyframes fadeIn {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
-/* ✅ Google カスタム検索バー対応部分 */
-.gsc-control-cse {
-  background: transparent !important;
-  border: none !important;
-  padding: 0 !important;
+#settingsContent label {
+  display: block;
+  margin: 8px 0 4px;
 }
 
-.gsc-search-box {
-  margin: 0 !important;
-}
-
-input.gsc-input {
-  padding: 6px 10px !important;
-  border: 1px solid var(--hover) !important;
-  border-radius: 8px !important;
-  background: white !important;
-  outline: none !important;
-  font-size: 14px !important;
-  width: 100% !important;
-  max-width: 300px;
-}
-
-.gsc-search-button {
-  background: var(--btn-bg) !important;
-  border: none !important;
-  padding: 6px 10px !important;
-  border-radius: 8px !important;
-  cursor: pointer !important;
-}
-
-.gsc-search-button:hover {
-  background: var(--hover) !important;
+#settingsContent select,
+#settingsContent button {
+  margin-bottom: 12px;
 }
