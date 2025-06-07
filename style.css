@@ -195,7 +195,6 @@ body.dark-mode #modalList li:hover {
   background: var(--hover-dark);
 }
 
-/* 設定のフォームスタイル */
 label {
   display: block;
   margin: 10px 0;
@@ -219,7 +218,6 @@ body.dark-mode select#fontSizeSelect {
   color: var(--fg-dark);
 }
 
-/* フォントサイズ切替 */
 body.font-small {
   font-size: 14px;
 }
@@ -232,7 +230,6 @@ body.font-large {
   font-size: 20px;
 }
 
-/* アニメーション */
 @keyframes fadeIn {
   from {
     transform: scale(0.95);
