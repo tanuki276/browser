@@ -35,15 +35,18 @@
   </div>
 
   <div id="settingsModal" class="hidden">
-    <div id="modalContent">
+    <div id="settingsContent">
       <h2>設定</h2>
-      <label>
-        <input type="checkbox" id="darkModeToggle" /> ダークモード
-      </label><br />
-      <label>
-        フォントサイズ：<input type="range" id="fontSizeRange" min="12" max="24" value="16" />
-      </label><br />
-      <button onclick="closeSettings()">閉じる</button>
+      <label><input type="checkbox" id="darkModeToggle" /> ダークモード</label><br/>
+      <label>文字サイズ
+        <select id="fontSizeSelect">
+          <option value="14px">小</option>
+          <option value="16px" selected>標準</option>
+          <option value="18px">大</option>
+          <option value="20px">特大</option>
+        </select>
+      </label><br/>
+      <button id="closeSettingsBtn">閉じる</button>
     </div>
   </div>
 
