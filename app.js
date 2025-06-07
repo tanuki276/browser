@@ -1,70 +1,51 @@
-const iframe = document.getElementById("viewer");
-const urlBox = document.getElementById("urlBox");
-const goBtn = document.getElementById("goBtn");
-const backBtn = document.getElementById("backBtn");
-const forwardBtn = document.getElementById("forwardBtn");
-const bookmarkBtn = document.getElementById("bookmarkBtn");
-const showHistoryBtn = document.getElementById("showHistory");
-const showBookmarksBtn = document.getElementById("showBookmarks");
-const modal = document.getElementById("modal");
-const modalTitle = document.getElementById("modalTitle");
-const modalList = document.getElementById("modalList");
+const body = document.body;
 const settingsBtn = document.getElementById("settingsBtn");
 const settingsModal = document.getElementById("settingsModal");
+const settingsContent = document.getElementById("settingsContent");
 const closeSettingsBtn = document.getElementById("closeSettingsBtn");
-const darkModeToggle = document.getElementById("darkModeToggle");
+
+const darkModeCheckbox = document.getElementById("darkModeCheckbox");
 const fontSizeSelect = document.getElementById("fontSizeSelect");
 
-let historyStack = [];
-let currentIndex = -1;
+settingsBtn.onclick = () => {
+  settingsModal.classList.remove("hidden");
+  darkModeCheckbox.checked = body.classList.contains("dark-mode");
+  fontSizeSelect.value = getFontSizeClass();
+};
 
-function navigateTo(url) {
-  if (!/^https?:\/\//.test(url)) {
-    url = "https://www.google.com/search?q=" + encodeURIComponent(url);
+closeSettingsBtn.onclick = () => {
+  settingsModal.classList.add("hidden");
+};
+
+darkModeCheckbox.onchange = () => {
+  if (darkModeCheckbox.checked) {
+    body.classList.add("dark-mode");
+    localStorage.setItem("darkMode", "true");
+  } else {
+    body.classList.remove("dark-mode");
+    localStorage.setItem("darkMode", "false");
   }
-  iframe.src = url;
-  urlBox.value = url;
-  if (currentIndex === -1 || historyStack[currentIndex] !== url) {
-    historyStack = historyStack.slice(0, currentIndex + 1);
-    historyStack.push(url);
-    currentIndex++;
-    saveHistory(url);
+};
+
+fontSizeSelect.onchange = () => {
+  const size = fontSizeSelect.value;
+  body.classList.remove("font-small", "font-medium", "font-large");
+  body.classList.add(size);
+  localStorage.setItem("fontSize", size);
+};
+
+function loadSettings() {
+  if (localStorage.getItem("darkMode") === "true") {
+    body.classList.add("dark-mode");
   }
+  const size = localStorage.getItem("fontSize") || "font-medium";
+  body.classList.add(size);
 }
 
-function goBack() {
-  if (currentIndex > 0) {
-    currentIndex--;
-    iframe.src = historyStack[currentIndex];
-    urlBox.value = historyStack[currentIndex];
-  }
+function getFontSizeClass() {
+  if (body.classList.contains("font-small")) return "font-small";
+  if (body.classList.contains("font-large")) return "font-large";
+  return "font-medium";
 }
 
-function goForward() {
-  if (currentIndex < historyStack.length - 1) {
-    currentIndex++;
-    iframe.src = historyStack[currentIndex];
-    urlBox.value = historyStack[currentIndex];
-  }
-}
-
-function saveHistory(url) {
-  const history = JSON.parse(localStorage.getItem("history") || "[]");
-  // 重複防止(直前のURLと同じなら追加しない)
-  if(history.length === 0 || history[0].url !== url){
-    history.unshift({ url, time: new Date().toISOString() });
-    localStorage.setItem("history", JSON.stringify(history.slice(0, 100)));
-  }
-}
-
-function addBookmark() {
-  const bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
-  if (!bookmarks.find(b => b.url === iframe.src)) {
-    bookmarks.unshift({ url: iframe.src });
-    localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
-  }
-}
-
-function openModal(type) {
-  modal.classList.remove("hidden");
-  modalTitle.textContent
+loadSettings();
