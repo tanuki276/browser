@@ -5,7 +5,7 @@ const URLS_TO_CACHE = [
   '/style.css',
   '/app.js',
   '/manifest.json',
-  '/192×192.png'
+  '/android-chrome-192x192.png'
 ];
 
 self.addEventListener('install', event => {
