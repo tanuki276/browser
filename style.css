@@ -22,13 +22,14 @@ body {
   height: 100vh;
 }
 
-.top-bar, .bottom-bar {
+.top-bar,
+.bottom-bar {
   background: var(--btn-bg);
   padding: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   z-index: 10;
 }
 
@@ -54,15 +55,6 @@ button {
 
 button:hover {
   background: var(--hover);
-}
-
-input#urlBox {
-  flex-grow: 1;
-  padding: 6px 10px;
-  border: 1px solid var(--hover);
-  border-radius: 8px;
-  background: white;
-  outline: none;
 }
 
 iframe#viewer {
@@ -93,7 +85,7 @@ iframe#viewer {
   border-radius: 12px;
   width: 90%;
   max-width: 400px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   animation: fadeIn 0.3s ease;
 }
 
@@ -122,6 +114,46 @@ iframe#viewer {
 }
 
 @keyframes fadeIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ✅ Google カスタム検索バー対応部分 */
+.gsc-control-cse {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.gsc-search-box {
+  margin: 0 !important;
+}
+
+input.gsc-input {
+  padding: 6px 10px !important;
+  border: 1px solid var(--hover) !important;
+  border-radius: 8px !important;
+  background: white !important;
+  outline: none !important;
+  font-size: 14px !important;
+  width: 100% !important;
+  max-width: 300px;
+}
+
+.gsc-search-button {
+  background: var(--btn-bg) !important;
+  border: none !important;
+  padding: 6px 10px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+}
+
+.gsc-search-button:hover {
+  background: var(--hover) !important;
 }
