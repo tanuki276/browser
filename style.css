@@ -1,0 +1,127 @@
+:root {
+  --bg: #f0f4f8;
+  --fg: #2e3440;
+  --accent: #5e81ac;
+  --btn-bg: #e5e9f0;
+  --hover: #d8dee9;
+  --modal-bg: rgba(0, 0, 0, 0.4);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.top-bar, .bottom-bar {
+  background: var(--btn-bg);
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+.top-bar {
+  position: sticky;
+  top: 0;
+}
+
+.bottom-bar {
+  justify-content: center;
+  position: sticky;
+  bottom: 0;
+}
+
+button {
+  background: var(--btn-bg);
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: var(--hover);
+}
+
+input#urlBox {
+  flex-grow: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--hover);
+  border-radius: 8px;
+  background: white;
+  outline: none;
+}
+
+iframe#viewer {
+  flex-grow: 1;
+  border: none;
+  width: 100%;
+}
+
+#modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--modal-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#modal.hidden {
+  display: none;
+}
+
+#modalContent {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  animation: fadeIn 0.3s ease;
+}
+
+#modalContent h2 {
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+#modalList {
+  max-height: 300px;
+  overflow-y: auto;
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 10px;
+}
+
+#modalList li {
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#modalList li:hover {
+  background: var(--hover);
+}
+
+@keyframes fadeIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
