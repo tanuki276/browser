@@ -1,6 +1,4 @@
 const iframe = document.getElementById("viewer");
-const urlBox = document.getElementById("urlBox");
-const goBtn = document.getElementById("goBtn");
 const backBtn = document.getElementById("backBtn");
 const forwardBtn = document.getElementById("forwardBtn");
 const bookmarkBtn = document.getElementById("bookmarkBtn");
@@ -13,12 +11,18 @@ const modalList = document.getElementById("modalList");
 let historyStack = [];
 let currentIndex = -1;
 
+window.addEventListener("message", event => {
+  if (event.origin.includes("google") && event.data?.type === "query") {
+    const url = event.data.query;
+    navigateTo("https://www.google.com/search?q=" + encodeURIComponent(url));
+  }
+});
+
 function navigateTo(url) {
   if (!/^https?:\/\//.test(url)) {
     url = "https://www.google.com/search?q=" + encodeURIComponent(url);
   }
   iframe.src = url;
-  urlBox.value = url;
   if (currentIndex === -1 || historyStack[currentIndex] !== url) {
     historyStack = historyStack.slice(0, currentIndex + 1);
     historyStack.push(url);
@@ -31,7 +35,6 @@ function goBack() {
   if (currentIndex > 0) {
     currentIndex--;
     iframe.src = historyStack[currentIndex];
-    urlBox.value = historyStack[currentIndex];
   }
 }
 
@@ -39,7 +42,6 @@ function goForward() {
   if (currentIndex < historyStack.length - 1) {
     currentIndex++;
     iframe.src = historyStack[currentIndex];
-    urlBox.value = historyStack[currentIndex];
   }
 }
 
@@ -78,8 +80,6 @@ function closeModal() {
   modal.classList.add("hidden");
 }
 
-goBtn.onclick = () => navigateTo(urlBox.value);
-urlBox.onkeydown = e => { if (e.key === "Enter") navigateTo(urlBox.value); };
 backBtn.onclick = goBack;
 forwardBtn.onclick = goForward;
 bookmarkBtn.onclick = addBookmark;
