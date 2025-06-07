@@ -8,17 +8,19 @@
   <link rel="icon" href="/android-chrome-192x192.png" />
   <script src="https://unpkg.com/lucide@latest"></script>
   <title>soln</title>
+  <script async src="https://cse.google.com/cse.js?cx=637e03adb4c784ae4"></script>
 </head>
 <body>
   <div class="top-bar">
     <button id="backBtn"><i data-lucide="arrow-left"></i></button>
     <button id="forwardBtn"><i data-lucide="arrow-right"></i></button>
-    <input type="text" id="urlBox" placeholder="検索またはURLを入力" />
-    <button id="goBtn"><i data-lucide="search"></i></button>
+    <div class="search-box">
+      <div class="gcse-search"></div>
+    </div>
     <button id="bookmarkBtn"><i data-lucide="bookmark-plus"></i></button>
   </div>
 
-  <iframe id="viewer" src=""></iframe>
+  <!-- <iframe id="viewer" src=""></iframe> -->
 
   <div class="bottom-bar">
     <button id="showHistory"><i data-lucide="clock"></i></button>
@@ -36,4 +38,4 @@
   <script src="/app.js"></script>
   <script>lucide.createIcons();</script>
 </body>
-  </html>
+</html>
