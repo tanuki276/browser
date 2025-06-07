@@ -8,23 +8,22 @@
   <link rel="icon" href="/android-chrome-192x192.png" />
   <script src="https://unpkg.com/lucide@latest"></script>
   <title>soln</title>
-  <script async src="https://cse.google.com/cse.js?cx=637e03adb4c784ae4"></script>
 </head>
 <body>
   <div class="top-bar">
-    <button id="backBtn"><i data-lucide="arrow-left"></i></button>
-    <button id="forwardBtn"><i data-lucide="arrow-right"></i></button>
-    <div class="search-box">
-      <div class="gcse-search"></div>
-    </div>
-    <button id="bookmarkBtn"><i data-lucide="bookmark-plus"></i></button>
+    <input type="text" id="urlBox" placeholder="検索またはURLを入力" />
+    <button id="goBtn"><i data-lucide="search"></i></button>
   </div>
 
-  <!-- <iframe id="viewer" src=""></iframe> -->
+  <iframe id="viewer" src=""></iframe>
 
   <div class="bottom-bar">
+    <button id="backBtn"><i data-lucide="arrow-left"></i></button>
+    <button id="forwardBtn"><i data-lucide="arrow-right"></i></button>
+    <button id="bookmarkBtn"><i data-lucide="bookmark-plus"></i></button>
     <button id="showHistory"><i data-lucide="clock"></i></button>
     <button id="showBookmarks"><i data-lucide="book-open"></i></button>
+    <button id="settingsBtn"><i data-lucide="settings"></i></button>
   </div>
 
   <div id="modal" class="hidden">
@@ -32,6 +31,19 @@
       <h2 id="modalTitle">履歴</h2>
       <ul id="modalList"></ul>
       <button onclick="closeModal()">閉じる</button>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="hidden">
+    <div id="modalContent">
+      <h2>設定</h2>
+      <label>
+        <input type="checkbox" id="darkModeToggle" /> ダークモード
+      </label><br />
+      <label>
+        フォントサイズ：<input type="range" id="fontSizeRange" min="12" max="24" value="16" />
+      </label><br />
+      <button onclick="closeSettings()">閉じる</button>
     </div>
   </div>
 
