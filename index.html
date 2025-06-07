@@ -2,29 +2,23 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>soln</title>
-  <link rel="stylesheet" href="/style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="manifest" href="/manifest.json" />
-  <link rel="icon" href="/android-chrome-192x192.png" />
-  <script async src="https://unpkg.com/lucide@latest"></script>
-  <script async src="https://cse.google.com/cse.js?cx=637e03adb4c784ae4"></script>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="icon" href="/icon.png" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <title>soln-browser</title>
 </head>
 <body>
   <div class="top-bar">
     <button id="backBtn"><i data-lucide="arrow-left"></i></button>
     <button id="forwardBtn"><i data-lucide="arrow-right"></i></button>
-    <input type="text" id="urlBox" placeholder="URLを入力" />
-    <button id="goBtn"><i data-lucide="arrow-right"></i></button>
+    <input type="text" id="urlBox" placeholder="検索またはURLを入力" />
+    <button id="goBtn"><i data-lucide="search"></i></button>
     <button id="bookmarkBtn"><i data-lucide="bookmark-plus"></i></button>
-    <button id="settingsBtn"><i data-lucide="settings"></i></button>
   </div>
 
-  <div class="search-container">
-    <div class="gcse-search"></div>
-  </div>
-
-  <iframe id="viewer" src="" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+  <iframe id="viewer" src=""></iframe>
 
   <div class="bottom-bar">
     <button id="showHistory"><i data-lucide="clock"></i></button>
@@ -33,24 +27,9 @@
 
   <div id="modal" class="hidden">
     <div id="modalContent">
-      <h2 id="modalTitle">モーダル</h2>
+      <h2 id="modalTitle">履歴</h2>
       <ul id="modalList"></ul>
       <button onclick="closeModal()">閉じる</button>
-    </div>
-  </div>
-
-  <div id="settingsModal" class="hidden">
-    <div id="settingsContent">
-      <h2>設定</h2>
-      <label><input type="checkbox" id="darkModeToggle" /> ダークモード</label><br />
-      <label>文字サイズ
-        <select id="fontSizeSelect">
-          <option value="small">小</option>
-          <option value="medium" selected>普通</option>
-          <option value="large">大</option>
-        </select>
-      </label><br />
-      <button onclick="closeSettings()">閉じる</button>
     </div>
   </div>
 
