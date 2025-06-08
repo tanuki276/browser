@@ -6,6 +6,7 @@ const forwardBtn = document.getElementById("forwardBtn");
 const bookmarkBtn = document.getElementById("bookmarkBtn");
 const showHistoryBtn = document.getElementById("showHistory");
 const showBookmarksBtn = document.getElementById("showBookmarks");
+const clearBtn = document.getElementById("clearBtn");
 const modal = document.getElementById("modal");
 const modalTitle = document.getElementById("modalTitle");
 const modalList = document.getElementById("modalList");
@@ -85,3 +86,7 @@ forwardBtn.onclick = goForward;
 bookmarkBtn.onclick = addBookmark;
 showHistoryBtn.onclick = () => openModal("history");
 showBookmarksBtn.onclick = () => openModal("bookmarks");
+clearBtn.onclick = () => {
+  urlBox.value = "";
+  urlBox.focus();
+};
