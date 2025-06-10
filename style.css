@@ -56,13 +56,36 @@ button:hover {
   background: var(--hover);
 }
 
-input#urlBox {
+.input-wrapper {
   flex-grow: 1;
-  padding: 6px 10px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+input#urlBox {
+  width: 100%;
+  padding: 6px 36px 6px 10px; /* スペース確保 */
   border: 1px solid var(--hover);
   border-radius: 8px;
   background: white;
   outline: none;
+}
+
+button#clearInput {
+  position: absolute;
+  right: 8px;
+  background: none;
+  padding: 4px;
+  border: none;
+  cursor: pointer;
+  display: none;
+  color: var(--fg);
+}
+
+button#clearInput:hover {
+  background: var(--hover);
+  border-radius: 50%;
 }
 
 iframe#viewer {
