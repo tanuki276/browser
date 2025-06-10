@@ -1,12 +1,12 @@
 const iframe = document.getElementById("viewer");
 const urlBox = document.getElementById("urlBox");
+const clearInputBtn = document.getElementById("clearInput");
 const goBtn = document.getElementById("goBtn");
 const backBtn = document.getElementById("backBtn");
 const forwardBtn = document.getElementById("forwardBtn");
 const bookmarkBtn = document.getElementById("bookmarkBtn");
 const showHistoryBtn = document.getElementById("showHistory");
 const showBookmarksBtn = document.getElementById("showBookmarks");
-const clearInputBtn = document.getElementById("clearInput");
 const modal = document.getElementById("modal");
 const modalTitle = document.getElementById("modalTitle");
 const modalList = document.getElementById("modalList");
@@ -32,6 +32,14 @@ function navigateTo(url) {
   updateNavigationButtons();
 }
 
+function saveHistory(url) {
+  const history = JSON.parse(localStorage.getItem("history") || "[]");
+  const existsIndex = history.findIndex(h => h.url === url);
+  if (existsIndex !== -1) history.splice(existsIndex, 1);
+  history.unshift({ url, time: new Date().toISOString() });
+  localStorage.setItem("history", JSON.stringify(history.slice(0, 100)));
+}
+
 function goBack() {
   if (currentIndex > 0) {
     currentIndex--;
@@ -48,14 +56,6 @@ function goForward() {
     urlBox.value = historyStack[currentIndex];
   }
   updateNavigationButtons();
-}
-
-function saveHistory(url) {
-  const history = JSON.parse(localStorage.getItem("history") || "[]");
-  const existsIndex = history.findIndex(h => h.url === url);
-  if (existsIndex !== -1) history.splice(existsIndex, 1);
-  history.unshift({ url, time: new Date().toISOString() });
-  localStorage.setItem("history", JSON.stringify(history.slice(0, 100)));
 }
 
 function addBookmark() {
@@ -114,19 +114,20 @@ urlBox.onkeydown = e => {
   }
 };
 
-backBtn.onclick = goBack;
-forwardBtn.onclick = goForward;
-bookmarkBtn.onclick = addBookmark;
-showHistoryBtn.onclick = () => openModal("history");
-showBookmarksBtn.onclick = () => openModal("bookmarks");
+urlBox.addEventListener("input", () => {
+  clearInputBtn.style.display = urlBox.value ? "inline" : "none";
+});
+
 clearInputBtn.onclick = () => {
   urlBox.value = "";
   clearInputBtn.style.display = "none";
   urlBox.focus();
 };
 
-urlBox.addEventListener("input", () => {
-  clearInputBtn.style.display = urlBox.value ? "inline" : "none";
-});
+backBtn.onclick = goBack;
+forwardBtn.onclick = goForward;
+bookmarkBtn.onclick = addBookmark;
+showHistoryBtn.onclick = () => openModal("history");
+showBookmarksBtn.onclick = () => openModal("bookmarks");
 
 updateNavigationButtons();
