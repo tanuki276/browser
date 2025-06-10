@@ -16,7 +16,7 @@
 
     <div class="input-wrapper">
       <input type="text" id="urlBox" placeholder="検索またはURLを入力" />
-      <button id="clearInput" style="display: none;"><i data-lucide="x"></i></button>
+      <button id="clearInput" style="display:none;"><i data-lucide="x"></i></button>
     </div>
 
     <button id="goBtn"><i data-lucide="search"></i></button>
@@ -42,6 +42,7 @@
   <script>
     lucide.createIcons();
 
+    // クリアボタン表示制御
     const urlBox = document.getElementById("urlBox");
     const clearInputBtn = document.getElementById("clearInput");
 
