@@ -10,6 +10,7 @@ const clearBtn = document.getElementById("clearBtn");
 const modal = document.getElementById("modal");
 const modalTitle = document.getElementById("modalTitle");
 const modalList = document.getElementById("modalList");
+const clearInputBtn = document.getElementById("clearInput");
 
 let historyStack = [];
 let currentIndex = -1;
@@ -86,6 +87,18 @@ forwardBtn.onclick = goForward;
 bookmarkBtn.onclick = addBookmark;
 showHistoryBtn.onclick = () => openModal("history");
 showBookmarksBtn.onclick = () => openModal("bookmarks");
+
+clearInputBtn.onclick = () => {
+  urlBox.value = "";
+  clearInputBtn.style.display = "none";
+  urlBox.focus();
+};
+
+urlBox.addEventListener("input", () => {
+  clearInputBtn.style.display = urlBox.value ? "block" : "none";
+});
+
+// 旧クリアボタン
 clearBtn.onclick = () => {
   urlBox.value = "";
   urlBox.focus();
