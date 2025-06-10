@@ -14,6 +14,7 @@
     <button id="backBtn"><i data-lucide="arrow-left"></i></button>
     <button id="forwardBtn"><i data-lucide="arrow-right"></i></button>
     <input type="text" id="urlBox" placeholder="検索またはURLを入力" />
+    <button id="clearInput" style="display: none;"><i data-lucide="x"></i></button>
     <button id="goBtn"><i data-lucide="search"></i></button>
     <button id="bookmarkBtn"><i data-lucide="bookmark-plus"></i></button>
   </div>
@@ -34,6 +35,21 @@
   </div>
 
   <script src="/app.js"></script>
-  <script>lucide.createIcons();</script>
+  <script>
+    lucide.createIcons();
+
+    const urlBox = document.getElementById("urlBox");
+    const clearInputBtn = document.getElementById("clearInput");
+
+    urlBox.addEventListener("input", () => {
+      clearInputBtn.style.display = urlBox.value ? "inline" : "none";
+    });
+
+    clearInputBtn.onclick = () => {
+      urlBox.value = "";
+      urlBox.focus();
+      clearInputBtn.style.display = "none";
+    };
+  </script>
 </body>
 </html>
