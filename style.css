@@ -1,94 +1,164 @@
-const iframe = document.getElementById("viewer");
-const urlBox = document.getElementById("urlBox");
-const goBtn = document.getElementById("goBtn");
-const backBtn = document.getElementById("backBtn");
-const forwardBtn = document.getElementById("forwardBtn");
-const bookmarkBtn = document.getElementById("bookmarkBtn");
-const showHistoryBtn = document.getElementById("showHistory");
-const showBookmarksBtn = document.getElementById("showBookmarks");
-const clearInputBtn = document.getElementById("clearInput");
-const modal = document.getElementById("modal");
-const modalTitle = document.getElementById("modalTitle");
-const modalList = document.getElementById("modalList");
-
-let historyStack = [];
-let currentIndex = -1;
-
-function navigateTo(url) {
-  if (!url) return;
-  if (!/^https?:\/\//.test(url)) {
-    url = "https://ja.wikipedia.org/wiki/" + encodeURIComponent(url.trim());
-  }
-  iframe.src = url;
-  urlBox.value = url;
-  if (currentIndex === -1 || historyStack[currentIndex] !== url) {
-    historyStack = historyStack.slice(0, currentIndex + 1);
-    historyStack.push(url);
-    currentIndex++;
-    saveHistory(url);
-  }
+:root {
+  --bg: #f0f4f8;
+  --fg: #2e3440;
+  --accent: #5e81ac;
+  --btn-bg: #e5e9f0;
+  --hover: #d8dee9;
+  --modal-bg: rgba(0, 0, 0, 0.4);
 }
 
-function goBack() {
-  if (currentIndex > 0) {
-    currentIndex--;
-    iframe.src = historyStack[currentIndex];
-    urlBox.value = historyStack[currentIndex];
-  }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: sans-serif;
 }
 
-function goForward() {
-  if (currentIndex < historyStack.length - 1) {
-    currentIndex++;
-    iframe.src = historyStack[currentIndex];
-    urlBox.value = historyStack[currentIndex];
-  }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
 
-function saveHistory(url) {
-  const history = JSON.parse(localStorage.getItem("history") || "[]");
-  history.unshift({ url, time: new Date().toISOString() });
-  localStorage.setItem("history", JSON.stringify(history.slice(0, 100)));
+.top-bar, .bottom-bar {
+  background: var(--btn-bg);
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 10;
 }
 
-function addBookmark() {
-  const bookmarks = JSON.parse(localStorage.getItem("bookmarks") || "[]");
-  if (!bookmarks.find(b => b.url === iframe.src)) {
-    bookmarks.unshift({ url: iframe.src });
-    localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
-  }
+.top-bar {
+  position: sticky;
+  top: 0;
 }
 
-function openModal(type) {
-  modal.classList.remove("hidden");
-  modalTitle.textContent = type === "history" ? "履歴" : "ブックマーク";
-  modalList.innerHTML = "";
-
-  const data = JSON.parse(localStorage.getItem(type) || "[]");
-  data.forEach(entry => {
-    const li = document.createElement("li");
-    li.textContent = entry.url;
-    li.onclick = () => {
-      navigateTo(entry.url);
-      closeModal();
-    };
-    modalList.appendChild(li);
-  });
+.bottom-bar {
+  justify-content: center;
+  position: sticky;
+  bottom: 0;
 }
 
-function closeModal() {
-  modal.classList.add("hidden");
+button {
+  background: var(--btn-bg);
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-goBtn.onclick = () => navigateTo(urlBox.value);
-urlBox.onkeydown = e => { if (e.key === "Enter") navigateTo(urlBox.value); };
-backBtn.onclick = goBack;
-forwardBtn.onclick = goForward;
-bookmarkBtn.onclick = addBookmark;
-showHistoryBtn.onclick = () => openModal("history");
-showBookmarksBtn.onclick = () => openModal("bookmarks");
-clearInputBtn.onclick = () => {
-  urlBox.value = "";
-  urlBox.focus();
-  clearInputBtn.style.display = "none";
-};
+button:hover {
+  background: var(--hover);
+}
+
+button i[data-lucide] {
+  color: var(--fg);
+  pointer-events: none; /* アイコンはクリック不可で親ボタンに任せる */
+}
+
+.input-wrapper {
+  flex-grow: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+input#urlBox {
+  width: 100%;
+  padding: 6px 36px 6px 10px; /* 右にクリアボタン分のスペース */
+  border: 1px solid var(--hover);
+  border-radius: 8px;
+  background: white;
+  outline: none;
+  font-size: 1rem;
+  color: var(--fg);
+}
+
+button#clearInput {
+  position: absolute;
+  right: 8px;
+  background: none;
+  padding: 4px;
+  border: none;
+  cursor: pointer;
+  display: none;
+  color: var(--fg);
+  font-size: 1rem;
+}
+
+button#clearInput:hover {
+  background: var(--hover);
+  border-radius: 50%;
+}
+
+iframe#viewer {
+  flex-grow: 1;
+  border: none;
+  width: 100%;
+}
+
+#modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--modal-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#modal.hidden {
+  display: none;
+}
+
+#modalContent {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  animation: fadeIn 0.3s ease;
+}
+
+#modalContent h2 {
+  margin-bottom: 10px;
+  text-align: center;
+  color: var(--fg);
+}
+
+#modalList {
+  max-height: 300px;
+  overflow-y: auto;
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 10px;
+}
+
+#modalList li {
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background 0.2s;
+  color: var(--fg);
+}
+
+#modalList li:hover {
+  background: var(--hover);
+}
+
+@keyframes fadeIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
