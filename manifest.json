@@ -1,6 +1,6 @@
 {
   "name": "soln",
-  "short_name": "soln-pwabrowser-β",
+  "short_name": "Wiki-browser",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f0f4f8",
