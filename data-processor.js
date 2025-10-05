@@ -1,165 +1,210 @@
-// このファイルは、生のFitデータからメトリクスを計算し、AI用プロンプトを生成するロジックを管理します。
+// このファイルは、グローバル状態、ローカルストレージ、およびデータ処理を管理します。
+
+// --- Global State ---
+window.state = {
+    googleClientId: "",
+    geminiApiKey: "",
+    dailyGoalMinutes: 30, // 初期目標値
+    isGapiLoaded: false,
+    isSignedIn: false,
+    loading: false,
+    authError: null,
+    
+    // Stopwatch State
+    stopwatchStartTime: null,
+    isTiming: false,
+    stopwatchIntervalId: null,
+    
+    // Fit Data State
+    // 全てのセッションデータを保持: { startTime: number, endTime: number, durationMinutes: number, ... }
+    sessions: [], 
+    // 集計結果を保持: { daily: { minutes, steps, ... }, weekly: {...}, monthly: {...} }
+    summaryData: null, 
+    analysis: null,
+};
+
+// --- Constants ---
+const GOOGLE_CLIENT_ID_KEY = 'googleClientId';
+const GEMINI_API_KEY_KEY = 'geminiApiKey';
+const DAILY_GOAL_KEY = 'dailyGoalMinutes';
+
+// --- Local Storage Key Management (永続化) ---
+
+function loadState() {
+    const state = window.state;
+    state.googleClientId = localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || "";
+    state.geminiApiKey = localStorage.getItem(GEMINI_API_KEY_KEY) || "";
+    state.dailyGoalMinutes = parseInt(localStorage.getItem(DAILY_GOAL_KEY)) || 30;
+
+    // DOM要素に反映
+    if (window.$dom) {
+        if (window.$dom.$googleClientId) window.$dom.$googleClientId.value = state.googleClientId;
+        if (window.$dom.$geminiApiKey) window.$dom.$geminiApiKey.value = state.geminiApiKey;
+        if (window.$dom.$dailyGoalMinutes) window.$dom.$dailyGoalMinutes.value = state.dailyGoalMinutes;
+    }
+}
+window.loadState = loadState;
+
+function saveState() {
+    localStorage.setItem(GOOGLE_CLIENT_ID_KEY, window.state.googleClientId);
+    localStorage.setItem(GEMINI_API_KEY_KEY, window.state.geminiApiKey);
+    localStorage.setItem(DAILY_GOAL_KEY, window.state.dailyGoalMinutes.toString());
+}
+window.saveState = saveState;
+
 
 // --- Utility Functions ---
 
-function formatDuration(ms) {
-    if (ms === 0) return 'N/A';
+function formatTime(ms) {
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
-    return `${hours}時間 ${minutes}分`;
+    const seconds = totalSeconds % 60;
+    
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+}
+window.formatTime = formatTime;
+
+/**
+ * タイムスタンプがその日/週/月の範囲内にあるかチェックする
+ */
+function isWithinPeriod(timestamp, now, period) {
+    const checkDate = new Date(timestamp);
+    const nowCopy = new Date(now);
+    
+    const checkYMD = checkDate.getFullYear() * 10000 + (checkDate.getMonth() + 1) * 100 + checkDate.getDate();
+    const nowYMD = nowCopy.getFullYear() * 10000 + (nowCopy.getMonth() + 1) * 100 + nowCopy.getDate();
+
+    if (period === 'day') {
+        return checkYMD === nowYMD;
+
+    } else if (period === 'week') {
+        const todayDay = nowCopy.getDay(); // 0=日, 6=土
+        const weekStart = new Date(nowCopy);
+        weekStart.setDate(nowCopy.getDate() - todayDay);
+        weekStart.setHours(0, 0, 0, 0);
+
+        return timestamp >= weekStart.getTime() && checkYMD <= nowYMD;
+
+    } else if (period === 'month') {
+        return checkDate.getFullYear() === nowCopy.getFullYear() && 
+               checkDate.getMonth() === nowCopy.getMonth() &&
+               checkYMD <= nowYMD;
+    }
+    return false;
 }
 
-// --- Data Processing Functions ---
 
-function processFitData(buckets) {
-    let totalSteps = 0;
-    let totalDistance = 0;
-    let totalCalories = 0;
-    let totalSleep = 0;
-    let dailyData = [];
-    let sleepCount = 0;
+// --- Data Processing (集計ロジック) ---
 
-    buckets.forEach(bucket => {
-        const dayStart = parseInt(bucket.startTimeMillis);
-        let daySteps = 0;
-        let dayDistance = 0;
-        let dayCalories = 0;
-        let daySleep = 0;
+const INITIAL_METRICS = {
+    minutes: 0, steps: 0, distance: 0, calories: 0, 
+    // 心拍数は合計値/回数で平均を出すため
+    totalHeartRate: 0, heartRateCount: 0, avgHeartRate: 0,
+    // 時速は距離/時間で出すため
+    durationMs: 0, avgSpeed: 0 
+};
 
-        bucket.dataset.forEach(dataset => {
-            dataset.point.forEach(point => {
-                const value = point.value[0].intVal || point.value[0].fpVal;
+/**
+ * Fitセッションデータから日/週/月ごとの合計値を計算する
+ */
+function calculateSummary() {
+    const now = new Date();
+    
+    let daily = { ...INITIAL_METRICS };
+    let weekly = { ...INITIAL_METRICS };
+    let monthly = { ...INITIAL_METRICS };
 
-                // Steps
-                if (dataset.dataSourceId.includes('step_count.delta') && value) {
-                    daySteps += value;
-                }
-
-                // Distance (in meters)
-                if (dataset.dataSourceId.includes('distance.delta') && value) {
-                    dayDistance += value;
-                }
-
-                // Calories
-                if (dataset.dataSourceId.includes('calories.expended') && value) {
-                    dayCalories += value;
-                }
-
-                // Sleep: intVal === 109 means 'sleep'
-                if (dataset.dataSourceId.includes('sleep.segment') && point.value[0].intVal === 109) { 
-                    daySleep += (parseInt(point.endTimeNanos) - parseInt(point.startTimeNanos)) / 1000000; // Nanos to Millis
-                }
-            });
-        });
+    window.state.sessions.forEach(session => {
+        const duration = session.durationMinutes;
+        const endTime = session.endTime;
         
-        if (daySleep > 0) {
-            totalSleep += daySleep;
-            sleepCount++;
-        }
+        const targetPeriods = [];
+        if (isWithinPeriod(endTime, now, 'day')) targetPeriods.push(daily);
+        if (isWithinPeriod(endTime, now, 'week')) targetPeriods.push(weekly);
+        if (isWithinPeriod(endTime, now, 'month')) targetPeriods.push(monthly);
 
-        totalSteps += daySteps;
-        totalDistance += dayDistance;
-        totalCalories += dayCalories;
-
-        dailyData.push({
-            date: dayStart,
-            steps: daySteps,
-            distanceKm: dayDistance / 1000, 
-            calories: dayCalories,
-            sleepMillis: daySleep,
+        targetPeriods.forEach(period => {
+            period.minutes += duration;
+            period.steps += session.steps;
+            period.distance += session.distance;
+            period.calories += session.calories;
+            
+            period.totalHeartRate += session.avgHeartRate * session.durationMinutes; // 重み付き平均の準備
+            period.heartRateCount += session.durationMinutes; // 分を重みとして利用
+            
+            period.durationMs += (session.endTime - session.startTime);
         });
     });
+    
+    // 最終的な平均と時速を計算
+    [daily, weekly, monthly].forEach(period => {
+        // 平均心拍数
+        if (period.heartRateCount > 0) {
+            period.avgHeartRate = period.totalHeartRate / period.heartRateCount;
+        }
+        // 平均時速 (km/h) = (距離m / 1000) / (時間ms / 3600000)
+        if (period.durationMs > 0) {
+            const distanceKm = period.distance / 1000;
+            const durationHours = period.durationMs / 3600000;
+            period.avgSpeed = distanceKm / durationHours; 
+        }
+    });
 
-    dailyData = dailyData.filter(d => d.steps > 0 || d.calories > 0 || d.sleepMillis > 0).sort((a, b) => a.date - b.date);
-
-    return {
-        summary: {
-            totalSteps: totalSteps,
-            totalDistance: totalDistance,
-            totalCalories: totalCalories,
-            averageSleep: sleepCount > 0 ? totalSleep / sleepCount : 0, 
-        },
-        dailyData: dailyData,
-    };
+    return { daily, weekly, monthly };
 }
-window.processFitData = processFitData;
+window.calculateSummary = calculateSummary;
+
 
 // --- Gemini Formatting Functions ---
 
-function createAnalysisPrompt(metrics) {
-    const summary = metrics.summary;
-    const dailyData = metrics.dailyData;
+function createAnalysisPrompt(summaryData, dailyGoal) {
+    const d = summaryData.daily;
+    const w = summaryData.weekly;
+    const m = summaryData.monthly;
+
+    const goalStatus = d.minutes >= dailyGoal ? "達成" : "未達成";
+    const goalDiff = d.minutes - dailyGoal;
 
     const summaryText = `
-        - 合計歩数: ${summary.totalSteps.toLocaleString()} 歩
-        - 合計距離: ${(summary.totalDistance / 1000).toFixed(2)} km
-        - 合計消費カロリー: ${summary.totalCalories.toFixed(0)} kcal
-        - 平均睡眠時間: ${formatDuration(summary.averageSleep)}
+        ## ユーザー活動データと目標
+
+        - **日次目標**: ${dailyGoal} 分
+        - **本日達成状況**: ${d.minutes.toFixed(1)} 分 (目標${goalStatus}, 差分: ${goalDiff.toFixed(1)} 分)
+        
+        ---
+        ### 今週の合計
+        - 活動時間: ${w.minutes.toFixed(1)} 分
+        - 歩数: ${w.steps.toLocaleString()} 歩
+        - 距離: ${(w.distance / 1000).toFixed(2)} km
+        - 消費カロリー: ${w.calories.toFixed(0)} kcal
+        - 平均時速: ${w.avgSpeed.toFixed(1)} km/h
+        - 平均心拍数: ${w.avgHeartRate.toFixed(0)} bpm
+
+        ### 今月の合計
+        - 活動時間: ${m.minutes.toFixed(1)} 分
+        - 歩数: ${m.steps.toLocaleString()} 歩
+        - 距離: ${(m.distance / 1000).toFixed(2)} km
+        - 消費カロリー: ${m.calories.toFixed(0)} kcal
+        - 平均時速: ${m.avgSpeed.toFixed(1)} km/h
+        - 平均心拍数: ${m.avgHeartRate.toFixed(0)} bpm
     `;
 
-    const dailyDataText = dailyData.map(d => {
-        const dateStr = new Date(d.date).toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
-        return `日付: ${dateStr}, 歩数: ${d.steps.toLocaleString()}, 距離: ${d.distanceKm.toFixed(2)}km, カロリー: ${d.calories.toFixed(0)}kcal, 睡眠: ${formatDuration(d.sleepMillis)}`;
-    }).join('\n');
-
     return `
-        あなたは専門の健康分析AIです。以下の過去7日間の健康データ（歩数、距離、カロリー、睡眠時間）を分析してください。
+        あなたは専門のフィットネスコーチAIです。以下の活動データを分析し、設定された目標に基づいてアドバイスを提供してください。
 
         ---
-        ## 総合サマリー
         ${summaryText}
-
-        ---
-        ## 日別データ
-        ${dailyDataText}
         ---
 
         このデータを基に、以下の3つのポイントについて日本語で詳細に分析し、Markdown形式で出力してください。
 
-        1.  **活動量（歩数・距離）の評価と変動分析:** 7日間の歩数と距離の傾向（例: 週末と平日の差、特定日の突出や低下）を評価し、全体的な活動レベルについてコメントしてください。
-        2.  **睡眠パターンの評価:** 平均睡眠時間と日ごとの変動を評価し、健康維持の観点から推奨事項を提案してください。
-        3.  **総合的な健康インサイトと次のステップ:** 全ての指標を総合し、ユーザーの健康状態に関する最も重要なインサイトを提供し、次の7日間で改善すべき具体的な目標や行動を1～2つ提案してください。
+        1.  **日次目標達成度と週間・月間進捗の評価:** 今日の目標達成状況に基づき、週間と月間の活動レベルを評価してください。目標達成に向けたモチベーション維持に関するアドバイスを含めてください。
+        2.  **活動強度（心拍数・時速）の評価:** 平均心拍数と平均時速から、活動の強度を評価してください。運動効率を高めるための具体的な強度調整（例: 有酸素運動の推奨）を提案してください。
+        3.  **総合的なアドバイスと次の目標設定の提案:** 全ての指標を総合し、ユーザーの健康状態に関するインサイトと、次の一週間で挑戦すべき具体的な行動目標（例: 歩数を〇〇歩増やす、活動時間を〇〇分増やす）を1～2つ提案してください。
     `;
 }
 window.createAnalysisPrompt = createAnalysisPrompt;
 
-function markdownToHtml(markdown) {
-    let html = markdown
-        .replace(/^###\s*(.*)$/gm, '<h4>$1</h4>')
-        .replace(/^##\s*(.*)$/gm, '<h3>$1</h3>')
-        .replace(/^#\s*(.*)$/gm, '<h2>$1</h2>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/^- (.*)$/gm, '<li>$1</li>')
-        .replace(/(\n<li>.*<\/li>)+/gs, '<ul class="list-disc ml-5 space-y-1 my-2">$1</ul>')
-        .replace(/(\n\n)/g, '<p class="mt-4">')
-        .replace(/\n(?!<p|h|u|l)/g, ' ') 
-        .replace(/<p class="mt-4">/g, '</p><p class="mt-4">') 
-        .trim();
-    
-    if (!html.startsWith('<') && html.length > 0) {
-         html = '<p class="mt-4">' + html + '</p>';
-    }
-    
-    html = html.replace(/<p class="mt-4"><\/p>/g, '');
-    
-    return html;
-}
-
-function parseAndFormatAnalysis(analysisText) {
-    const lines = analysisText.split('\n');
-    let title = "AI詳細分析結果";
-    let content = analysisText;
-
-    if (lines[0].startsWith('##') || lines[0].startsWith('#')) {
-        title = lines[0].replace(/#+\s*/, '').trim();
-        content = lines.slice(1).join('\n');
-    }
-    
-    content = markdownToHtml(content);
-
-    return { title, content };
-}
-window.parseAndFormatAnalysis = parseAndFormatAnalysis;
-window.formatDuration = formatDuration; 
+// Markdown to HTML変換は前回コードと同じロジックを使用（api-handlers.jsまたはui-renderer.jsに配置を想定）
