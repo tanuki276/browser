@@ -16,9 +16,7 @@ window.state = {
     stopwatchIntervalId: null,
 
     // Fit Data State
-    // 全てのセッションデータを保持: { startTime: number, endTime: number, durationMinutes: number, ... }
     sessions: [], 
-    // 集計結果を保持: { daily: { minutes, steps, ... }, weekly: {...}, monthly: {...} }
     summaryData: null, 
     analysis: null,
 };
@@ -100,9 +98,7 @@ function isWithinPeriod(timestamp, now, period) {
 
 const INITIAL_METRICS = {
     minutes: 0, steps: 0, distance: 0, calories: 0, 
-    // 心拍数は合計値/回数で平均を出すため
     totalHeartRate: 0, heartRateCount: 0, avgHeartRate: 0,
-    // 時速は距離/時間で出すため
     durationMs: 0, avgSpeed: 0 
 };
 
