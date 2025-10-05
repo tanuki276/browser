@@ -9,12 +9,12 @@ window.state = {
     isSignedIn: false,
     loading: false,
     authError: null,
-    
+
     // Stopwatch State
     stopwatchStartTime: null,
     isTiming: false,
     stopwatchIntervalId: null,
-    
+
     // Fit Data State
     // 全てのセッションデータを保持: { startTime: number, endTime: number, durationMinutes: number, ... }
     sessions: [], 
@@ -60,7 +60,7 @@ function formatTime(ms) {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    
+
     const pad = (num) => String(num).padStart(2, '0');
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
@@ -72,7 +72,7 @@ window.formatTime = formatTime;
 function isWithinPeriod(timestamp, now, period) {
     const checkDate = new Date(timestamp);
     const nowCopy = new Date(now);
-    
+
     const checkYMD = checkDate.getFullYear() * 10000 + (checkDate.getMonth() + 1) * 100 + checkDate.getDate();
     const nowYMD = nowCopy.getFullYear() * 10000 + (nowCopy.getMonth() + 1) * 100 + nowCopy.getDate();
 
@@ -111,7 +111,7 @@ const INITIAL_METRICS = {
  */
 function calculateSummary() {
     const now = new Date();
-    
+
     let daily = { ...INITIAL_METRICS };
     let weekly = { ...INITIAL_METRICS };
     let monthly = { ...INITIAL_METRICS };
@@ -119,7 +119,7 @@ function calculateSummary() {
     window.state.sessions.forEach(session => {
         const duration = session.durationMinutes;
         const endTime = session.endTime;
-        
+
         const targetPeriods = [];
         if (isWithinPeriod(endTime, now, 'day')) targetPeriods.push(daily);
         if (isWithinPeriod(endTime, now, 'week')) targetPeriods.push(weekly);
@@ -130,14 +130,14 @@ function calculateSummary() {
             period.steps += session.steps;
             period.distance += session.distance;
             period.calories += session.calories;
-            
+
             period.totalHeartRate += session.avgHeartRate * session.durationMinutes; // 重み付き平均の準備
             period.heartRateCount += session.durationMinutes; // 分を重みとして利用
-            
+
             period.durationMs += (session.endTime - session.startTime);
         });
     });
-    
+
     // 最終的な平均と時速を計算
     [daily, weekly, monthly].forEach(period => {
         // 平均心拍数
@@ -206,5 +206,3 @@ function createAnalysisPrompt(summaryData, dailyGoal) {
     `;
 }
 window.createAnalysisPrompt = createAnalysisPrompt;
-
-// Markdown to HTML変換は前回コードと同じロジックを使用（api-handlers.jsまたはui-renderer.jsに配置を想定）
