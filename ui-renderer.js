@@ -4,7 +4,9 @@ const state = window.state;
 const $dom = window.$dom;
 
 
-// --- Stopwatch Logic --- (前回のコードとほぼ同じ)
+// --- Stopwatch Logic --- 
+// ストップウォッチ機能のロジック
+
 function handleTimerClick() {
     if (state.isTiming) {
         stopStopwatch();
@@ -14,8 +16,16 @@ function handleTimerClick() {
     window.updateUI();
 }
 
-function startStopwatch() { /* ... */ }
-function updateTimerDisplay() { /* ... */ }
+function startStopwatch() { 
+    state.isTiming = true;
+    state.stopwatchStartTime = Date.now();
+    state.stopwatchIntervalId = setInterval(updateTimerDisplay, 1000);
+}
+
+function updateTimerDisplay() {
+    const elapsed = Date.now() - state.stopwatchStartTime;
+    $dom.$timerDisplay.textContent = window.formatTime(elapsed);
+}
 
 async function stopStopwatch() {
     clearInterval(state.stopwatchIntervalId);
@@ -30,6 +40,7 @@ async function stopStopwatch() {
         $dom.$timerStatus.textContent = "Google Fitに記録中...";
         $dom.$timerButton.disabled = true;
 
+        // Fit APIに書き込み
         const success = await window.writeActivityToFit(startTimeMs, endTimeMs);
 
         if (success) {
@@ -48,7 +59,6 @@ async function stopStopwatch() {
 
 function updateUI() {
     // 1. Error & Auth
-    // ... (前回のコードと同様)
     if (state.authError) {
         $dom.$errorDisplay.textContent = state.authError;
         $dom.$errorDisplay.classList.remove('hidden');
@@ -57,16 +67,11 @@ function updateUI() {
     }
 
     // Auth Buttonの表示ロジック
-    // Client IDが入力され、GAPIが未初期化の場合のみ認証ボタンを有効化する
     const isAuthButtonEnabled = (state.googleClientId.length > 0 && !state.isSignedIn);
     $dom.$authButton.disabled = !isAuthButtonEnabled;
     $dom.$authButton.textContent = state.isSignedIn ? "Google Fitからサインアウト" : "Google Fitに認証";
+    // Client IDが入力され、未認証の場合にオレンジ色でボタンを有効化
     $dom.$authButton.className = `w-full px-6 py-3 font-semibold text-white rounded-lg transition duration-300 ${isAuthButtonEnabled ? 'bg-orange-500 hover:bg-orange-600 shadow-lg' : 'bg-gray-400 cursor-not-allowed'}`;
-    
-    // 認証エラーがある場合は、ボタンを押すことでinitClientを再試行できるようにするため、GAPIのロード状態に関わらずIDがあればボタンは有効化すべき
-    // if (!state.isGapiLoaded && state.googleClientId.length > 0) {
-    //     $dom.$authButton.disabled = false;
-    // }
 
     $dom.$fetchButton.disabled = !state.isSignedIn || state.loading;
     $dom.$fetchButton.className = `flex-1 px-6 py-3 font-semibold text-white rounded-lg transition duration-300 ${state.isSignedIn && !state.loading ? 'bg-indigo-600 hover:bg-indigo-700 shadow-lg' : 'bg-gray-400 cursor-not-allowed'}`;
@@ -78,7 +83,6 @@ function updateUI() {
 
     // 2. Timer Button
     $dom.$timerButton.disabled = !state.isSignedIn || state.loading || state.isProcessing;
-    // ... (Timer Buttonの表示ロジック)
     if (!state.isSignedIn) {
         $dom.$timerButton.className = 'px-8 py-4 font-extrabold text-lg text-white rounded-xl transition duration-300 bg-gray-400 cursor-not-allowed';
         $dom.$timerStatus.textContent = "認証後、「今から測定」が有効になります。";
@@ -212,7 +216,7 @@ function handleInput(e) {
     window.saveState();
 
     if (e.target.id === 'googleClientId' && window.gapi && window.gapi.load) {
-        // ★★★ 修正箇所: Client IDが入力されたら、認証クライアントを初期化する initClient() を呼び出す ★★★
+        // Client IDが入力され、値がある場合に認証クライアントを初期化するinitClient()を呼び出す
         if (window.state.googleClientId) {
             window.initClient();
         }
@@ -237,7 +241,7 @@ function initializeApp() {
     // 3. Initial UI Update and GAPI init attempt
     updateUI(); 
     if (window.state.googleClientId) {
-        window.initClient(); // ★★★ Client IDがLocal Storageにあれば、最初に認証初期化を試みる ★★★
+        window.initClient(); // Client IDがLocal Storageにあれば、最初に認証初期化を試みる
     }
 }
 
@@ -247,12 +251,7 @@ window.gapiLoaded = function() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // gapi.jsのロード後にinitClientを呼び出すための設定
-    // HTML側で <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script> のような記述を想定
     if (window.gapi && window.gapi.load) {
-        gapi.load('client:auth2', initializeApp);
-    } else {
-        // gapi.jsのロードが遅い場合のフォールバック（通常はHTMLのonloadでgapiLoadedが呼び出される）
-        console.warn("gapi.jsのロードが確認できませんでした。HTMLのscriptタグを確認してください。");
+        // gapi.jsのロード後に実行されるgapiLoaded関数がHTMLに設定されている場合があるため、ここでは何もしない
     }
 });
