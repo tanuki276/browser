@@ -1,21 +1,34 @@
 // --- DOM Elements ---
-// このファイルは、すべてのDOM要素への参照を管理します。
 
 const $id = (id) => document.getElementById(id);
 
 window.$dom = {
     $googleClientId: $id('googleClientId'),
     $geminiApiKey: $id('geminiApiKey'),
+    $dailyGoalMinutes: $id('dailyGoalMinutes'), // 目標設定
     $authButton: $id('auth-button'),
     $fetchButton: $id('fetch-button'),
     $analyzeButton: $id('analyze-button'),
     $errorDisplay: $id('error-display'),
-    $metricsSection: $id('metrics-section'),
-    $dataChartSection: $id('data-chart-section'),
+    
+    // Stopwatch elements
+    $timerButton: $id('timer-button'),
+    $timerDisplay: $id('timer-display'),
+    $timerStatus: $id('timer-status'),
+    
+    // Summary elements
+    $summarySection: $id('summary-section'),
+    $dailyTotal: $id('daily-total'),
+    $weeklyTotal: $id('weekly-total'),
+    $monthlyTotal: $id('monthly-total'),
+
+    // Detail Metrics
+    $detailMetricsSection: $id('detail-metrics-section'),
+    $detailMetrics: $id('detail-metrics'),
+    
+    // Analysis elements
+    $analysisControlSection: $id('analysis-control-section'),
     $analysisResultSection: $id('analysis-result-section'),
-    $summaryMetrics: $id('summary-metrics'),
-    $dailyDataTable: $id('daily-data-table'),
     $analysisTitle: $id('analysis-title'),
     $analysisContent: $id('analysis-content'),
-    $stepsDistanceViz: $id('steps-distance-visualization')
 };
