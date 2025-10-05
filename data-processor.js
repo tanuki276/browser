@@ -162,4 +162,4 @@ function parseAndFormatAnalysis(analysisText) {
     return { title, content };
 }
 window.parseAndFormatAnalysis = parseAndFormatAnalysis;
-window.formatDuration = formatDuration; // UI描画にも必要なので公開
+window.formatDuration = formatDuration; 
