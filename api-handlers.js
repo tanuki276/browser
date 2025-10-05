@@ -1,10 +1,10 @@
 // このファイルは、Google Fit API/Gemini APIへの通信ロジックを管理します。
 
-// data-logic.jsで定義されたwindow.stateを使用
+// data-processor.jsで定義されたwindow.stateを使用
 
 // --- Constants ---
 const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/fitness/v1/rest"];
-// ★★★ READ/WRITE両方の権限 ★★★
+// READ/WRITE両方の権限
 const SCOPES = "https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.activity.write https://www.googleapis.com/auth/fitness.body.read"; 
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent`;
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
@@ -24,7 +24,7 @@ function initClient() {
 
     // gapi.client.initが認証インスタンスを初期化する
     gapi.client.init({
-        clientId: state.googleClientId, // ★★★ ユーザー入力のIDを使用 ★★★
+        clientId: state.googleClientId, // ユーザー入力のIDを使用
         discoveryDocs: DISCOVERY_DOCS,
         scope: SCOPES, 
     }).then(() => {
@@ -62,20 +62,14 @@ function updateSigninStatus(isSignedIn) {
     const state = window.state;
     state.isSignedIn = isSignedIn;
     window.updateUI();
-
-    // サインイン後、自動でデータ取得を試みる (この行は削除またはコメントアウトされました)
-    // if (isSignedIn) {
-    //     window.handleFetchClick(); 
-    // }
 }
-// window.updateSigninStatus = updateSigninStatus; // windowに公開する必要はない
 
 // 4. 認証ボタンがクリックされたときの処理
 function handleAuthClick() {
     const state = window.state;
     
-    if (!state.isGapiLoaded) {
-        // GAPIが未初期化の場合、まず初期化を試みる (Client IDが必須)
+    if (!state.isGapiLoaded && state.googleClientId) {
+        // GAPIが未初期化でClient IDがある場合、まず初期化を試みる
         initClient();
         return;
     }
@@ -94,12 +88,6 @@ window.handleAuthClick = handleAuthClick;
 
 /**
  * Fitのデータソースから集計値を取得
- * @param {number} startTimeMs - 開始時刻
- * @param {number} endTimeMs - 終了時刻
- * @param {string} dataType - 例: "com.google.heart_rate.bpm"
- * @param {string} dataSourceId - Fit APIのデータソースID
- * @param {number} bucketDurationMs - 集計間隔
- * @returns {Array} - 集計バケット
  */
 async function aggregateFitData(startTimeMs, endTimeMs, dataType, dataSourceId, bucketDurationMs) {
     const requestBody = {
@@ -179,10 +167,7 @@ async function handleFetchClick() {
                                 totalValue += value;
                                 count++;
 
-                                // 心拍数の場合は平均値を計算する必要がある
-                                if (type === 'heartRate') {
-                                    // 心拍数は平均を出すために、ここでは個々の値を合計
-                                }
+                                // 心拍数の場合は平均を出すために、ここでは個々の値を合計
                             });
                         });
                     });
@@ -236,8 +221,7 @@ async function writeActivityToFit(startTimeMs, endTimeMs) {
         return false;
     }
 
-    // 活動タイプ: 7 (ウォーキング), 8 (ランニング), 113 (ハイキング)
-    // ここでは一般的な "OTHER" (9) または "WALKING" (7) を使用
+    // 活動タイプ: 7 (ウォーキング)
     const activityType = 7; 
     const sessionId = `activity-tracker-${startTimeMs}-${endTimeMs}`;
 
@@ -274,7 +258,7 @@ async function writeActivityToFit(startTimeMs, endTimeMs) {
 window.writeActivityToFit = writeActivityToFit;
 
 
-// --- Gemini AI Analysis --- (前回のコードを流用し、目標設定を考慮)
+// --- Gemini AI Analysis --- 
 
 async function handleAnalyzeClick() {
     const state = window.state;
