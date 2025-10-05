@@ -1,46 +1,12 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="manifest" href="/manifest.json" />
-  <link rel="stylesheet" href="/style.css" />
-  <link rel="icon" href="/android-chrome-192x192.png" />
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <title>soln-browser</title>
+    <script src="https://apis.google.com/js/api.js"></script> 
 </head>
-<body>
-  <div class="top-bar">
-    <button id="backBtn"><i data-lucide="arrow-left"></i></button>
-    <button id="forwardBtn"><i data-lucide="arrow-right"></i></button>
+<body class="p-4 md:p-8">
 
-    <div class="input-wrapper">
-      <input type="text" id="urlBox" placeholder="検索またはURLを入力" />
-      <button id="clearInput" style="display:none;"><i data-lucide="x"></i></button>
-    </div>
-
-    <button id="goBtn"><i data-lucide="search"></i></button>
-    <button id="bookmarkBtn"><i data-lucide="bookmark-plus"></i></button>
-  </div>
-
-  <iframe id="viewer" src=""></iframe>
-
-  <div class="bottom-bar">
-    <button id="showHistory"><i data-lucide="clock"></i></button>
-    <button id="showBookmarks"><i data-lucide="book-open"></i></button>
-  </div>
-
-  <div id="modal" class="hidden">
-    <div id="modalContent">
-      <h2 id="modalTitle">履歴</h2>
-      <ul id="modalList"></ul>
-      <button onclick="closeModal()">閉じる</button>
-    </div>
-  </div>
-
-  <script src="/app.js"></script>
-  <script>
-    lucide.createIcons();
-  </script>
+    <script src="dom-elements.js"></script>     <script src="api-handlers.js"></script>
+    <script src="data-processor.js"></script>
+    <script src="ui-renderer.js"></script>
 </body>
 </html>
