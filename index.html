@@ -1,11 +1,106 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Insight Detail Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css"> 
+    
     <script src="https://apis.google.com/js/api.js"></script> 
 </head>
 <body class="p-4 md:p-8">
 
-    <script src="dom-elements.js"></script>     <script src="api-handlers.js"></script>
+    <div id="app" class="max-w-4xl mx-auto">
+        <div class="bg-white card shadow-custom p-6 md:p-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">
+                ヘルスデータ詳細分析 📊
+            </h1>
+            <p class="mb-6 text-gray-600">
+                Google Fit (OAuth) と Gemini API のキーを入力し、詳細な期間別健康分析を行います。
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label for="googleClientId" class="block text-sm font-semibold text-gray-700 mb-1">
+                        Google Fit Client ID
+                    </label>
+                    <input id="googleClientId" type="text" placeholder="ここにGoogle Client IDを入力"
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 transition duration-150"
+                    >
+                </div>
+                <div>
+                    <label for="geminiApiKey" class="block text-sm font-semibold text-gray-700 mb-1">
+                        Gemini API Key
+                    </label>
+                    <input id="geminiApiKey" type="password" placeholder="ここにGemini API Keyを入力"
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150"
+                    >
+                </div>
+            </div>
+
+            <div id="auth-section" class="mb-8 p-6 bg-yellow-50 border border-yellow-200 card shadow-md">
+                <h2 class="text-xl font-bold text-yellow-800 mb-4">ステップ 1: Google Fit認証とデータ取得</h2>
+                
+                <div id="error-display" class="hidden p-3 mb-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm"></div>
+                
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button id="auth-button" class="px-4 py-2 font-semibold text-white rounded-lg transition duration-300 bg-gray-400" disabled>
+                        IDを入力してください
+                    </button>
+                    <button id="fetch-button" disabled
+                        class="flex-1 px-6 py-3 font-semibold text-white rounded-lg transition duration-300 bg-gray-400 cursor-not-allowed">
+                        Fitデータ取得 (過去7日間)
+                    </button>
+                </div>
+            </div>
+
+            <div id="metrics-section" class="hidden mb-8 p-6 bg-blue-50 border border-blue-200 card shadow-md">
+                <h2 class="text-xl font-bold text-blue-800 mb-4">
+                    ステップ 2: 計測されたサマリーとAI解析
+                </h2>
+                <div id="summary-metrics" class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm text-gray-700 mb-4">
+                    </div>
+
+                <button id="analyze-button" disabled
+                    class="w-full px-6 py-3 font-semibold text-white rounded-lg transition duration-300 bg-blue-600 hover:bg-blue-700 shadow-lg flex items-center justify-center">
+                    Geminiで詳細解析開始
+                </button>
+            </div>
+
+            <div id="data-chart-section" class="hidden mb-8 p-6 bg-white border border-gray-200 card shadow-md">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    データ推移 (HTML/CSSによる可視化)
+                </h3>
+                
+                <div class="mb-8">
+                    <p class="text-sm font-semibold mb-3 text-gray-700 border-b pb-1">日別歩数・距離</p>
+                    <div id="steps-distance-visualization" class="flex justify-around items-end h-56 border-l border-b border-gray-300 px-1">
+                        </div>
+                    <div class="flex justify-around mt-1">
+                        </div>
+                    <p class="text-xs text-gray-500 mt-2">（青: 歩数, 緑: 距離(km)。棒の高さは最大値に対する比率）</p>
+                </div>
+
+                <h4 class="text-lg font-bold text-gray-800 mt-8 mb-4 border-b-2 border-gray-200 pb-2">
+                    日単位詳細データ表
+                </h4>
+                <div id="daily-data-table" class="overflow-x-auto">
+                    </div>
+            </div>
+
+            <div id="analysis-result-section" class="hidden p-6 bg-green-50 border border-green-300 card shadow-md">
+                <h3 id="analysis-title" class="text-xl font-bold text-green-800 mb-4"></h3>
+                
+                <div id="analysis-content" class="space-y-6 text-sm md:text-base">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="dom-elements.js"></script>
+    <script src="api-handlers.js"></script>
     <script src="data-processor.js"></script>
     <script src="ui-renderer.js"></script>
 </body>
