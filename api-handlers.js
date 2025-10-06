@@ -4,87 +4,91 @@
 
 // --- Constants ---
 const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/fitness/v1/rest"];
-// READ/WRITE両方の権限
+// READ/WRITE両方の権限とHEART_RATEの読み取り権限
 const SCOPES = "https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.activity.write https://www.googleapis.com/auth/fitness.body.read"; 
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent`;
-const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
-// --- GAPI Initialization (認証の核となる部分を実装) ---
+// --- GAPI Loading and Initialization --- 
 
-// 1. Google APIクライアントライブラリをClient IDとスコープで初期化する
-function initClient() {
-    const state = window.state;
-    
-    // Client IDが空の場合は、エラーを出して初期化しない
-    if (!state.googleClientId) {
-        state.authError = "Client IDが設定されていません。入力後に認証ボタンを押してください。";
-        window.updateUI();
-        return; 
-    }
-
-    // gapi.client.initが認証インスタンスを初期化する
-    gapi.client.init({
-        clientId: state.googleClientId, // ユーザー入力のIDを使用
-        discoveryDocs: DISCOVERY_DOCS,
-        scope: SCOPES, 
-    }).then(() => {
-        // 初期化が成功した後、認証ステータスのリスナーを設定する
-        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-        
-        // 初期の認証ステータスを反映する
-        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-        state.isGapiLoaded = true;
-        state.authError = null;
-        window.updateUI();
-
-        // Fit APIクライアントをロード
-        initGapiClient();
-
-    }).catch(error => {
-        console.error("GAPI Client Initialization Error:", error);
-        state.authError = `GAPI初期化失敗: ${error.details || error.error || error.message}. Client IDを確認してください。`;
-        window.updateUI();
+/**
+ * GAPIクライアントライブラリのロードを開始し、ロード完了時にUIを更新します。
+ */
+function initGapiLoader() {
+    // window.onloadを待ってからGAPIをロード（GAPIライブラリの推奨）
+    window.addEventListener('load', () => {
+        gapi.load('client:auth2', () => {
+            // GAPIライブラリがロード完了
+            window.state.isGapiLoaded = true;
+            
+            // Client IDがあれば、GAPIクライアントの初期化を試みる
+            if (window.state.googleClientId) {
+                window.initGapiClient(); 
+            } else {
+                 // Client IDがない場合もUIを更新し、ボタンを「IDを入力してください」状態にする
+                 window.updateUI(); 
+            }
+        });
     });
 }
-window.initClient = initClient;
+window.initGapiLoader = initGapiLoader;
 
-// 2. Google Fit API (fitness) のクライアントをロードする
+
+/**
+ * GAPIクライアントの初期化を実行する（Client IDが設定されている場合のみ）
+ */
 function initGapiClient() {
-    gapi.client.load('fitness', 'v1').then(() => {
-        // Fitness APIのロードが完了
+    const state = window.state;
+    if (!state.googleClientId || !state.isGapiLoaded) {
+        state.authError = "Google APIライブラリの準備ができていないか、Client IDがありません。";
+        window.updateUI();
+        return;
+    }
+
+    gapi.client.init({
+        apiKey: 'DUMMY', 
+        clientId: state.googleClientId,
+        discoveryDocs: DISCOVERY_DOCS,
+        scope: SCOPES,
+    }).then(() => {
+        // 初期化成功後、サインイン状態を監視
+        const authInstance = gapi.auth2.getAuthInstance();
+        authInstance.isSignedIn.listen(updateSigninStatus);
+        updateSigninStatus(authInstance.isSignedIn.get());
+        state.authError = null;
+        window.updateUI();
+    }).catch(error => {
+        console.error("GAPI Client Init Error:", error);
+        state.authError = "Google APIクライアントの初期化に失敗しました。Client IDまたはリダイレクトURIの設定を確認してください。";
         window.updateUI();
     });
 }
 window.initGapiClient = initGapiClient;
 
-// 3. 認証ステータスが変更されたときの処理
+
 function updateSigninStatus(isSignedIn) {
-    const state = window.state;
-    state.isSignedIn = isSignedIn;
+    window.state.isSignedIn = isSignedIn;
+    window.state.authError = null;
     window.updateUI();
 }
 
-// 4. 認証ボタンがクリックされたときの処理
+
 function handleAuthClick() {
-    const state = window.state;
-    
-    if (!state.isGapiLoaded && state.googleClientId) {
-        // GAPIが未初期化でClient IDがある場合、まず初期化を試みる
-        initClient();
+    if (!window.state.googleClientId) {
+        console.error("Google Fit Client IDを入力してください。"); 
         return;
     }
 
-    if (state.isSignedIn) {
+    if (gapi.auth2.getAuthInstance().isSignedIn.get()) {
         gapi.auth2.getAuthInstance().signOut();
     } else {
-        // サインイン処理 (ポップアップ表示)
-        gapi.auth2.getAuthInstance().signIn();
+        // サインインポップアップを表示
+        gapi.auth2.getAuthInstance().signIn(); 
     }
 }
 window.handleAuthClick = handleAuthClick;
 
 
-// --- Google Fit Handlers (詳細データ取得) ---
+// --- Google Fit Handlers (詳細データ取得と集計) ---
 
 /**
  * Fitのデータソースから集計値を取得
@@ -95,17 +99,25 @@ async function aggregateFitData(startTimeMs, endTimeMs, dataType, dataSourceId, 
             dataType: dataType,
             dataSourceId: dataSourceId 
         }],
+        // NOTE: セッション期間全体を集計するため、bucketDurationMillisを期間全体に設定
         bucketByTime: { durationMillis: bucketDurationMs },
         startTimeMillis: startTimeMs,
         endTimeMillis: endTimeMs,
     };
 
-    const response = await gapi.client.fitness.users.dataset.aggregate({
-        userId: 'me',
-        resource: requestBody
-    });
+    // NOTE: GAPIクライアントが初期化されていない場合は処理を中断
+    if (!gapi.client.fitness) return []; 
 
-    return response.result && response.result.bucket ? response.result.bucket : [];
+    try {
+        const response = await gapi.client.fitness.users.dataset.aggregate({
+            userId: 'me',
+            resource: requestBody
+        });
+        return response.result && response.result.bucket ? response.result.bucket : [];
+    } catch (e) {
+        console.error(`Error aggregating data for ${dataType}:`, e);
+        return [];
+    }
 }
 
 
@@ -120,6 +132,7 @@ async function handleFetchClick() {
     window.updateUI();
 
     const now = new Date();
+    // 過去30日間 + 本日分を含める
     const startTimeMillis = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30).getTime();
     const endTimeMillis = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - 1; 
 
@@ -133,10 +146,10 @@ async function handleFetchClick() {
         });
 
         const rawSessions = sessionResponse.result.session || [];
-
+        
         // 2. 各セッションの活動期間中の詳細データを取得し、集計する
         const sessionsWithDetails = await Promise.all(rawSessions
-            .filter(s => s.activityType !== 0)
+            .filter(s => s.activityType !== 0) // 活動タイプ0 (不明)を除外
             .map(async s => {
                 const sessionStart = parseInt(s.startTimeMillis);
                 const sessionEnd = parseInt(s.endTimeMillis);
@@ -145,17 +158,17 @@ async function handleFetchClick() {
 
                 // 各指標のデータ取得 (セッション期間中の合計/平均)
                 const aggregates = await Promise.all([
-                    // 歩数 (STEP_COUNT_DELTA)
+                    // 歩数 
                     aggregateFitData(sessionStart, sessionEnd, "com.google.step_count.delta", "raw:com.google.step_count.delta:*:*", durationMs),
-                    // 距離 (DISTANCE_DELTA)
+                    // 距離
                     aggregateFitData(sessionStart, sessionEnd, "com.google.distance.delta", "raw:com.google.distance.delta:*:*", durationMs),
-                    // カロリー (CALORIES_EXPENDED)
+                    // カロリー
                     aggregateFitData(sessionStart, sessionEnd, "com.google.calories.expended", "raw:com.google.calories.expended:*:*", durationMs),
-                    // 心拍数 (HEART_RATE_BPM) - 平均値を取得するため、時間バケットはそのまま
+                    // 心拍数 (平均値を取得するため、ここでは1分バケットで取得し、processor側で平均を計算)
                     aggregateFitData(sessionStart, sessionEnd, "com.google.heart_rate.bpm", "raw:com.google.heart_rate.bpm:*:*", 1000 * 60)
                 ]);
 
-                // データの抽出
+                // データの抽出ヘルパー関数
                 const extractValue = (buckets, type) => {
                     let totalValue = 0;
                     let count = 0;
@@ -163,11 +176,10 @@ async function handleFetchClick() {
                     buckets.forEach(bucket => {
                         bucket.dataset.forEach(dataset => {
                             dataset.point.forEach(point => {
+                                // Fit APIではintValまたはfpValで値が返る
                                 const value = point.value[0]?.fpVal || point.value[0]?.intVal || 0;
                                 totalValue += value;
                                 count++;
-
-                                // 心拍数の場合は平均を出すために、ここでは個々の値を合計
                             });
                         });
                     });
@@ -177,23 +189,21 @@ async function handleFetchClick() {
                     return totalValue;
                 };
 
-                const steps = extractValue(aggregates[0], 'steps');
-                const distance = extractValue(aggregates[1], 'distance');
-                const calories = extractValue(aggregates[2], 'calories');
+                // NOTE: 心拍数はセッション期間中の平均値を取得
                 const avgHeartRate = extractValue(aggregates[3], 'heartRate');
-
+                
                 return {
                     startTime: sessionStart,
                     endTime: sessionEnd,
                     durationMinutes: durationMinutes,
-                    steps: Math.round(steps),
-                    distance: distance, // meter
-                    calories: calories, // kcal
+                    steps: Math.round(extractValue(aggregates[0], 'steps')),
+                    distance: extractValue(aggregates[1], 'distance'), // meter
+                    calories: extractValue(aggregates[2], 'calories'), // kcal
                     avgHeartRate: avgHeartRate, // bpm
                 };
             })
         );
-
+        
         state.sessions = sessionsWithDetails;
         state.summaryData = window.calculateSummary(); // 集計実行
         state.authError = null;
@@ -209,20 +219,17 @@ async function handleFetchClick() {
 window.handleFetchClick = handleFetchClick;
 
 
-// --- Google Fit Handlers (書き込み) ---
-
 /**
  * 計測した活動時間をGoogle Fitにセッションとして書き込む
  */
 async function writeActivityToFit(startTimeMs, endTimeMs) {
     const state = window.state;
     if (!state.isSignedIn) {
-        alert("Google Fitにサインインしてから記録してください。");
+        console.error("Google Fitにサインインしてから記録してください。");
         return false;
     }
-
-    // 活動タイプ: 7 (ウォーキング)
-    const activityType = 7; 
+    
+    const activityType = 7; // ウォーキング
     const sessionId = `activity-tracker-${startTimeMs}-${endTimeMs}`;
 
     const requestBody = {
@@ -242,7 +249,7 @@ async function writeActivityToFit(startTimeMs, endTimeMs) {
         });
 
         if (response.status === 200) {
-             // 書き込み成功後、データを再取得して最新の状態を反映する
+             // 記録成功後、最新データを再取得してUIを更新
              await handleFetchClick(); 
              return true;
         } else {
@@ -251,14 +258,27 @@ async function writeActivityToFit(startTimeMs, endTimeMs) {
 
     } catch (error) {
         console.error("Fit Data Write Error:", error);
-        alert(`活動の記録に失敗しました: ${error.message}`);
+        console.error(`活動の記録に失敗しました: ${error.message}`);
         return false;
     }
 }
 window.writeActivityToFit = writeActivityToFit;
 
 
-// --- Gemini AI Analysis --- 
+// --- Gemini AI Analysis --- (指数関数的バックオフを追加)
+
+async function fetchWithExponentialBackoff(fetchFunc, maxRetries = 5, delay = 1000) {
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await fetchFunc();
+        } catch (error) {
+            // ログは出力しないが、コンソールで確認できるようにしておく
+            if (i === maxRetries - 1) throw error; // 最後の試行で失敗したらスロー
+            // 指数関数的な遅延 + ランダムな揺らぎ (ジッター)
+            await new Promise(resolve => setTimeout(resolve, delay * (2 ** i) + Math.random() * 1000));
+        }
+    }
+}
 
 async function handleAnalyzeClick() {
     const state = window.state;
@@ -274,27 +294,42 @@ async function handleAnalyzeClick() {
     const prompt = window.createAnalysisPrompt(state.summaryData, state.dailyGoalMinutes); 
 
     try {
-        const response = await fetch(GEMINI_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Goog-Api-Key': state.geminiApiKey, // API Keyをヘッダーで渡す（推奨）
-            },
-            body: JSON.stringify({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-            }),
-        });
+        const fetchGemini = async () => {
+             const response = await fetch(GEMINI_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': state.geminiApiKey,
+                },
+                body: JSON.stringify({
+                    contents: [{ role: "user", parts: [{ text: prompt }] }],
+                }),
+            });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`Gemini API Error: ${response.status} - ${errorData.error ? errorData.error.message : response.statusText}`);
-        }
+            if (!response.ok) {
+                const errorData = await response.json();
+                // 429 (Rate Limit)または5xxエラーの場合、再試行のためにスロー
+                if (response.status === 429 || response.status >= 500) {
+                     throw new Error(`Transient API Error: ${response.status}`);
+                }
+                // それ以外のエラーは即座に失敗
+                throw new Error(`Gemini API Error: ${response.status} - ${errorData.error ? errorData.error.message : response.statusText}`);
+            }
+            return response;
+        };
 
+        const response = await fetchWithExponentialBackoff(fetchGemini);
         const data = await response.json();
+        
+        // データの妥当性チェック
+        if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+             throw new Error("Geminiからの応答データが不完全です。");
+        }
+        
         const analysisText = data.candidates[0].content.parts[0].text;
-
-        const { title, content } = window.parseAndFormatAnalysis(analysisText); // UI rendererで定義される
-
+        
+        const { title, content } = window.parseAndFormatAnalysis(analysisText); 
+        
         state.analysis.title = title;
         state.analysis.content = content;
         state.authError = null;
@@ -302,7 +337,7 @@ async function handleAnalyzeClick() {
     } catch (error) {
         console.error("Gemini Analysis Error:", error);
         state.authError = `AI解析エラー: ${error.message}. APIキーが正しいか確認してください。`;
-        state.analysis = { title: "AI解析エラー", content: `<p class="text-red-600">${error.message}</p>` };
+        state.analysis = { title: "AI解析エラー", content: `<p class="text-red-600 font-mono text-sm">${error.message}</p>` };
     } finally {
         state.isProcessing = false;
         window.updateUI();
