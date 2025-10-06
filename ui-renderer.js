@@ -1,12 +1,10 @@
 // このファイルは、DOM操作、UIのレンダリング、イベントリスナーの設定を管理します。
 
+// data-processor.jsで定義されたwindow.stateを使用
 const state = window.state;
-const $dom = window.$dom;
+// window.$domはここで初期化時に要素を取得します
 
-
-// --- Stopwatch Logic --- 
-// ストップウォッチ機能のロジック
-
+// --- Stopwatch Logic ---
 function handleTimerClick() {
     if (state.isTiming) {
         stopStopwatch();
@@ -16,38 +14,44 @@ function handleTimerClick() {
     window.updateUI();
 }
 
-function startStopwatch() { 
-    state.isTiming = true;
+function startStopwatch() {
     state.stopwatchStartTime = Date.now();
-    state.stopwatchIntervalId = setInterval(updateTimerDisplay, 1000);
+    state.isTiming = true;
+    
+    if (state.stopwatchIntervalId) clearInterval(state.stopwatchIntervalId);
+    
+    state.stopwatchIntervalId = setInterval(() => {
+        updateTimerDisplay();
+    }, 1000);
 }
 
 function updateTimerDisplay() {
-    const elapsed = Date.now() - state.stopwatchStartTime;
-    $dom.$timerDisplay.textContent = window.formatTime(elapsed);
+    if (state.isTiming && state.stopwatchStartTime) {
+        const elapsedTime = Date.now() - state.stopwatchStartTime;
+        window.$dom.$timerDisplay.textContent = window.formatTime(elapsedTime);
+    } else {
+        window.$dom.$timerDisplay.textContent = "00:00:00";
+    }
 }
 
 async function stopStopwatch() {
     clearInterval(state.stopwatchIntervalId);
-
+    
     const endTimeMs = Date.now();
     const startTimeMs = state.stopwatchStartTime;
     const durationMinutes = (endTimeMs - startTimeMs) / (1000 * 60);
 
     if (durationMinutes < 0.1) {
-        alert("記録時間が短すぎます。");
+        // NOTE: カスタムモーダルなどに変更を推奨
+        console.error("記録時間が短すぎます。");
     } else {
-        $dom.$timerStatus.textContent = "Google Fitに記録中...";
-        $dom.$timerButton.disabled = true;
-
-        // Fit APIに書き込み
-        const success = await window.writeActivityToFit(startTimeMs, endTimeMs);
-
-        if (success) {
-            alert(`活動を終了し、Google Fitに記録しました！\n記録時間: ${durationMinutes.toFixed(1)}分`);
-        }
+        window.$dom.$timerStatus.textContent = "Google Fitに記録中...";
+        window.$dom.$timerButton.disabled = true;
+        
+        // Fitへの記録処理
+        await window.writeActivityToFit(startTimeMs, endTimeMs);
     }
-
+    
     state.isTiming = false;
     state.stopwatchStartTime = null;
     state.stopwatchIntervalId = null;
@@ -58,7 +62,11 @@ async function stopStopwatch() {
 // --- UI Rendering Functions ---
 
 function updateUI() {
-    // 1. Error & Auth
+    // DOM要素が初期化されているか確認
+    const $dom = window.$dom;
+    if (Object.keys($dom).length === 0) return; // 初期化前はスキップ
+
+    // 1. Error Display
     if (state.authError) {
         $dom.$errorDisplay.textContent = state.authError;
         $dom.$errorDisplay.classList.remove('hidden');
@@ -66,13 +74,27 @@ function updateUI() {
         $dom.$errorDisplay.classList.add('hidden');
     }
 
-    // Auth Buttonの表示ロジック
-    const isAuthButtonEnabled = (state.googleClientId.length > 0 && !state.isSignedIn);
-    $dom.$authButton.disabled = !isAuthButtonEnabled;
-    $dom.$authButton.textContent = state.isSignedIn ? "Google Fitからサインアウト" : "Google Fitに認証";
-    // Client IDが入力され、未認証の場合にオレンジ色でボタンを有効化
-    $dom.$authButton.className = `w-full px-6 py-3 font-semibold text-white rounded-lg transition duration-300 ${isAuthButtonEnabled ? 'bg-orange-500 hover:bg-orange-600 shadow-lg' : 'bg-gray-400 cursor-not-allowed'}`;
+    // 2. Auth Button
+    const hasClientId = state.googleClientId.length > 0;
+    
+    // GAPIが未ロード OR Client IDがない場合はボタンを無効化
+    $dom.$authButton.disabled = !state.isGapiLoaded || !hasClientId; 
 
+    if (!state.isGapiLoaded) {
+        $dom.$authButton.textContent = "ライブラリ読み込み中...";
+        $dom.$authButton.className = 'px-4 py-2 font-semibold text-white rounded-lg transition duration-300 bg-gray-400 cursor-wait';
+    } else if (!hasClientId) {
+        $dom.$authButton.textContent = "IDを入力してください";
+        $dom.$authButton.className = 'px-4 py-2 font-semibold text-white rounded-lg transition duration-300 bg-gray-400';
+    } else if (state.isSignedIn) {
+        $dom.$authButton.textContent = "Google Fitからログアウト";
+        $dom.$authButton.className = 'px-4 py-2 font-semibold text-white rounded-lg transition duration-300 bg-red-600 hover:bg-red-700 shadow-md';
+    } else {
+        $dom.$authButton.textContent = "Google Fitにサインイン (WRITE権限)";
+        $dom.$authButton.className = 'px-4 py-2 font-semibold text-white rounded-lg transition duration-300 bg-green-600 hover:bg-green-700 shadow-md';
+    }
+
+    // 3. Fetch Button
     $dom.$fetchButton.disabled = !state.isSignedIn || state.loading;
     $dom.$fetchButton.className = `flex-1 px-6 py-3 font-semibold text-white rounded-lg transition duration-300 ${state.isSignedIn && !state.loading ? 'bg-indigo-600 hover:bg-indigo-700 shadow-lg' : 'bg-gray-400 cursor-not-allowed'}`;
     if (state.loading) {
@@ -81,7 +103,7 @@ function updateUI() {
         $dom.$fetchButton.textContent = "Fitデータ集計 (過去30日間)";
     }
 
-    // 2. Timer Button
+    // 4. Timer Button (計測操作)
     $dom.$timerButton.disabled = !state.isSignedIn || state.loading || state.isProcessing;
     if (!state.isSignedIn) {
         $dom.$timerButton.className = 'px-8 py-4 font-extrabold text-lg text-white rounded-xl transition duration-300 bg-gray-400 cursor-not-allowed';
@@ -89,7 +111,6 @@ function updateUI() {
     } else if (state.isTiming) {
          $dom.$timerButton.className = 'px-8 py-4 font-extrabold text-lg text-white rounded-xl transition duration-300 bg-red-600 hover:bg-red-700 shadow-lg';
          $dom.$timerButton.textContent = "終了";
-         updateTimerDisplay();
          $dom.$timerStatus.textContent = "測定中。終了ボタンでFitに記録します。";
     } else {
         $dom.$timerButton.className = 'px-8 py-4 font-extrabold text-lg text-white rounded-xl transition duration-300 bg-green-600 hover:bg-green-700 shadow-lg';
@@ -97,7 +118,7 @@ function updateUI() {
         $dom.$timerStatus.textContent = "「今から測定」でストップウォッチがスタートします。";
     }
 
-    // 3. Summary & Detail Metrics
+    // 5. Summary & Detail Metrics
     if (state.summaryData) {
         $dom.$summarySection.classList.remove('hidden');
         $dom.$detailMetricsSection.classList.remove('hidden');
@@ -109,8 +130,8 @@ function updateUI() {
         $dom.$detailMetricsSection.classList.add('hidden');
         $dom.$analysisControlSection.classList.add('hidden');
     }
-
-    // 4. Analyze Button
+    
+    // 6. Analyze Button
     const hasApiKey = state.geminiApiKey.length > 0;
     $dom.$analyzeButton.disabled = !hasApiKey || !state.summaryData || state.isProcessing;
     $dom.$analyzeButton.className = `w-full px-6 py-3 font-semibold text-white rounded-lg transition duration-300 ${!$dom.$analyzeButton.disabled ? 'bg-blue-600 hover:bg-blue-700 shadow-lg' : 'bg-gray-400 cursor-not-allowed'} flex items-center justify-center`;
@@ -120,7 +141,7 @@ function updateUI() {
         $dom.$analyzeButton.textContent = hasApiKey ? "Geminiでアドバイスを取得" : "Gemini API Keyを入力してください";
     }
 
-    // 5. Analysis Result Section
+    // 7. Analysis Result Section
     if (state.analysis) {
         $dom.$analysisResultSection.classList.remove('hidden');
         $dom.$analysisTitle.textContent = state.analysis.title || "AI詳細アドバイス";
@@ -132,23 +153,27 @@ function updateUI() {
 window.updateUI = updateUI;
 
 
+// --- Helper Renderers ---
+
 function renderSummaryMetrics(daily, weekly, monthly, goal) {
+    const $dom = window.$dom;
     const dailyTotal = daily.minutes.toFixed(0);
     const weeklyTotal = weekly.minutes.toFixed(0);
     const monthlyTotal = monthly.minutes.toFixed(0);
-
+    
     // 日次合計
     $dom.$dailyTotal.innerHTML = `${dailyTotal}<span class="text-sm font-semibold text-gray-500 ml-1">分</span>`;
-    $dom.$dailyTotal.parentElement.querySelector('p:first-child').textContent = `本日 (${dailyTotal >= goal ? '目標達成!' : '目標まであと ' + (goal - dailyTotal).toFixed(0) + '分'})`;
-
+    $dom.$dailyTotal.parentElement.querySelector('p:first-child').textContent = `本日 (${dailyTotal >= goal ? '目標達成!' : '目標まであと ' + Math.max(0, goal - dailyTotal).toFixed(0) + '分'})`;
+    
     // 週間・月間合計
     $dom.$weeklyTotal.innerHTML = `${weeklyTotal}<span class="text-sm font-semibold text-gray-500 ml-1">分</span>`;
     $dom.$monthlyTotal.innerHTML = `${monthlyTotal}<span class="text-sm font-semibold text-gray-500 ml-1">分</span>`;
 }
 
 function renderDetailMetrics(dailyData) {
+    const $dom = window.$dom;
     $dom.$detailMetrics.innerHTML = '';
-
+    
     const metricsList = [
         { title: "歩数", value: dailyData.steps.toLocaleString(), unit: "歩" },
         { title: "距離", value: (dailyData.distance / 1000).toFixed(2), unit: "km" },
@@ -171,7 +196,7 @@ function renderDetailMetrics(dailyData) {
     });
 }
 
-// MarkdownをHTMLに変換するロジック (Geminiアドバイス表示用)
+// Markdown to HTML変換ロジック
 function parseAndFormatAnalysis(markdown) {
     let html = markdown
         .replace(/^###\s*(.*)$/gm, '<h4>$1</h4>')
@@ -185,13 +210,13 @@ function parseAndFormatAnalysis(markdown) {
         .replace(/\n(?!<p|h|u|l)/g, ' ') 
         .replace(/<p class="mt-4">/g, '</p><p class="mt-4">') 
         .trim();
-
+    
     if (!html.startsWith('<') && html.length > 0) {
          html = '<p class="mt-4">' + html + '</p>';
     }
-
+    
     html = html.replace(/<p class="mt-4"><\/p>/g, '');
-
+    
     return {
         title: html.match(/<h2>(.*?)<\/h2>/)?.[1] || "AI詳細アドバイス",
         content: html.replace(/<h2>(.*?)<\/h2>/, '')
@@ -205,53 +230,89 @@ window.parseAndFormatAnalysis = parseAndFormatAnalysis;
 function handleInput(e) {
     if (e.target.id === 'googleClientId') {
         window.state.googleClientId = e.target.value;
+        // Client IDが変わった場合、GAPIの初期化を試みる
+        if (window.state.googleClientId && window.state.isGapiLoaded) {
+            window.initGapiClient();
+        }
     } else if (e.target.id === 'geminiApiKey') {
         window.state.geminiApiKey = e.target.value;
     } else if (e.target.id === 'dailyGoalMinutes') {
         window.state.dailyGoalMinutes = parseInt(e.target.value) || 0;
-        // 目標変更時に集計表示も更新
         if (state.summaryData) renderSummaryMetrics(state.summaryData.daily, state.summaryData.weekly, state.summaryData.monthly, state.dailyGoalMinutes);
     }
-
+    
     window.saveState();
-
-    if (e.target.id === 'googleClientId' && window.gapi && window.gapi.load) {
-        // Client IDが入力され、値がある場合に認証クライアントを初期化するinitClient()を呼び出す
-        if (window.state.googleClientId) {
-            window.initClient();
-        }
-    }
     updateUI();
 }
 
 function initializeApp() {
+    
+    // =================================================================
+    // 【重要修正箇所】DOM要素を確実に取得する
+    // =================================================================
+    const $id = window.$id;
+    window.$dom = {
+        $googleClientId: $id('googleClientId'),
+        $geminiApiKey: $id('geminiApiKey'),
+        $dailyGoalMinutes: $id('dailyGoalMinutes'),
+        $authButton: $id('auth-button'),
+        $fetchButton: $id('fetch-button'),
+        $analyzeButton: $id('analyze-button'),
+        $errorDisplay: $id('error-display'),
+        
+        // Stopwatch elements
+        $timerButton: $id('timer-button'),
+        $timerDisplay: $id('timer-display'),
+        $timerStatus: $id('timer-status'),
+        
+        // Summary elements
+        $summarySection: $id('summary-section'),
+        $dailyTotal: $id('daily-total'),
+        $weeklyTotal: $id('weekly-total'),
+        $monthlyTotal: $id('monthly-total'),
+
+        // Detail Metrics
+        $detailMetricsSection: $id('detail-metrics-section'),
+        $detailMetrics: $id('detail-metrics'),
+        
+        // Analysis elements
+        $analysisControlSection: $id('analysis-control-section'),
+        $analysisResultSection: $id('analysis-result-section'),
+        $analysisTitle: $id('analysis-title'),
+        $analysisContent: $id('analysis-content'),
+    };
 
     // 1. Load Data
     window.loadState();
-
+    
     // 2. Set Listeners
-    $dom.$googleClientId.addEventListener('input', handleInput);
-    $dom.$geminiApiKey.addEventListener('input', handleInput);
-    $dom.$dailyGoalMinutes.addEventListener('input', handleInput);
-    $dom.$authButton.addEventListener('click', window.handleAuthClick);
-    $dom.$fetchButton.addEventListener('click', window.handleFetchClick);
-    $dom.$timerButton.addEventListener('click', handleTimerClick);
-    $dom.$analyzeButton.addEventListener('click', window.handleAnalyzeClick);
+    // DOM要素が確実に存在するため、安全にイベントリスナーを設定
+    window.$dom.$googleClientId.addEventListener('input', handleInput);
+    window.$dom.$geminiApiKey.addEventListener('input', handleInput);
+    window.$dom.$dailyGoalMinutes.addEventListener('input', handleInput);
+    window.$dom.$authButton.addEventListener('click', window.handleAuthClick);
+    window.$dom.$fetchButton.addEventListener('click', window.handleFetchClick);
+    window.$dom.$timerButton.addEventListener('click', handleTimerClick);
+    window.$dom.$analyzeButton.addEventListener('click', window.handleAnalyzeClick);
 
-    // 3. Initial UI Update and GAPI init attempt
+    
+    // 3. Initial UI Update
     updateUI(); 
-    if (window.state.googleClientId) {
-        window.initClient(); // Client IDがLocal Storageにあれば、最初に認証初期化を試みる
-    }
+    
+    // 4. Load GAPI and Auth2 libraries
+    window.addEventListener('load', () => {
+        gapi.load('client:auth2', () => {
+            // GAPIライブラリがロード完了
+            state.isGapiLoaded = true;
+            
+            // Client IDがあれば、GAPIクライアントの初期化を試みる
+            if (state.googleClientId) {
+                window.initGapiClient(); 
+            } else {
+                 // Client IDがない場合もUIを更新し、ボタンを「IDを入力してください」状態にする
+                 updateUI(); 
+            }
+        });
+    });
 }
-
-// Google API Clientライブラリがロードされたら初期化
-window.gapiLoaded = function() {
-    gapi.load('client:auth2', initializeApp);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    if (window.gapi && window.gapi.load) {
-        // gapi.jsのロード後に実行されるgapiLoaded関数がHTMLに設定されている場合があるため、ここでは何もしない
-    }
-});
+document.addEventListener('DOMContentLoaded', initializeApp);
