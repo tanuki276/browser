@@ -16,6 +16,7 @@ const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/
 function initGapiLoader() {
     // window.onloadを待ってからGAPIをロード（GAPIライブラリの推奨）
     window.addEventListener('load', () => {
+        // gapi.load()のコールバック内で直接処理を実行しており、window.gapiLoaded関数は不要です
         gapi.load('client:auth2', () => {
             // GAPIライブラリがロード完了
             window.state.isGapiLoaded = true;
