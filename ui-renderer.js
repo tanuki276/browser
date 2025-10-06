@@ -18,14 +18,19 @@ function startStopwatch() {
     state.stopwatchStartTime = Date.now();
     state.isTiming = true;
     
+    // 既存のインターバルがあればクリア
     if (state.stopwatchIntervalId) clearInterval(state.stopwatchIntervalId);
     
+    // 1秒ごとにタイマー表示を更新
     state.stopwatchIntervalId = setInterval(() => {
         updateTimerDisplay();
     }, 1000);
 }
 
 function updateTimerDisplay() {
+    // DOM要素が初期化されていない場合は処理しない
+    if (!window.$dom || !window.$dom.$timerDisplay) return; 
+
     if (state.isTiming && state.stopwatchStartTime) {
         const elapsedTime = Date.now() - state.stopwatchStartTime;
         window.$dom.$timerDisplay.textContent = window.formatTime(elapsedTime);
@@ -42,11 +47,12 @@ async function stopStopwatch() {
     const durationMinutes = (endTimeMs - startTimeMs) / (1000 * 60);
 
     if (durationMinutes < 0.1) {
-        // NOTE: カスタムモーダルなどに変更を推奨
-        console.error("記録時間が短すぎます。");
+        // 短すぎる記録はコンソールに出力（ユーザーにはカスタムUIで通知を推奨）
+        console.error("記録時間が短すぎます。0.1分（6秒）以上の活動を記録してください。");
+        if(window.$dom.$timerStatus) window.$dom.$timerStatus.textContent = "記録は破棄されました。時間が短すぎます。";
     } else {
-        window.$dom.$timerStatus.textContent = "Google Fitに記録中...";
-        window.$dom.$timerButton.disabled = true;
+        if(window.$dom.$timerStatus) window.$dom.$timerStatus.textContent = "Google Fitに記録中...";
+        if(window.$dom.$timerButton) window.$dom.$timerButton.disabled = true;
         
         // Fitへの記録処理
         await window.writeActivityToFit(startTimeMs, endTimeMs);
@@ -64,14 +70,14 @@ async function stopStopwatch() {
 function updateUI() {
     // DOM要素が初期化されているか確認
     const $dom = window.$dom;
-    if (Object.keys($dom).length === 0) return; // 初期化前はスキップ
+    if (Object.keys($dom).length === 0 || !$dom.$authButton) return; // 初期化前はスキップ
 
     // 1. Error Display
     if (state.authError) {
-        $dom.$errorDisplay.textContent = state.authError;
-        $dom.$errorDisplay.classList.remove('hidden');
+        $dom.$errorDisplay?.textContent = state.authError;
+        $dom.$errorDisplay?.classList.remove('hidden');
     } else {
-        $dom.$errorDisplay.classList.add('hidden');
+        $dom.$errorDisplay?.classList.add('hidden');
     }
 
     // 2. Auth Button
@@ -120,15 +126,15 @@ function updateUI() {
 
     // 5. Summary & Detail Metrics
     if (state.summaryData) {
-        $dom.$summarySection.classList.remove('hidden');
-        $dom.$detailMetricsSection.classList.remove('hidden');
+        $dom.$summarySection?.classList.remove('hidden');
+        $dom.$detailMetricsSection?.classList.remove('hidden');
         renderSummaryMetrics(state.summaryData.daily, state.summaryData.weekly, state.summaryData.monthly, state.dailyGoalMinutes);
         renderDetailMetrics(state.summaryData.daily);
-        $dom.$analysisControlSection.classList.remove('hidden');
+        $dom.$analysisControlSection?.classList.remove('hidden');
     } else {
-        $dom.$summarySection.classList.add('hidden');
-        $dom.$detailMetricsSection.classList.add('hidden');
-        $dom.$analysisControlSection.classList.add('hidden');
+        $dom.$summarySection?.classList.add('hidden');
+        $dom.$detailMetricsSection?.classList.add('hidden');
+        $dom.$analysisControlSection?.classList.add('hidden');
     }
     
     // 6. Analyze Button
@@ -143,12 +149,15 @@ function updateUI() {
 
     // 7. Analysis Result Section
     if (state.analysis) {
-        $dom.$analysisResultSection.classList.remove('hidden');
-        $dom.$analysisTitle.textContent = state.analysis.title || "AI詳細アドバイス";
-        $dom.$analysisContent.innerHTML = state.analysis.content;
+        $dom.$analysisResultSection?.classList.remove('hidden');
+        if ($dom.$analysisTitle) $dom.$analysisTitle.textContent = state.analysis.title || "AI詳細アドバイス";
+        if ($dom.$analysisContent) $dom.$analysisContent.innerHTML = state.analysis.content;
     } else {
-        $dom.$analysisResultSection.classList.add('hidden');
+        $dom.$analysisResultSection?.classList.add('hidden');
     }
+
+    // 8. Timer Display Update (念のため)
+    updateTimerDisplay(); 
 }
 window.updateUI = updateUI;
 
@@ -157,6 +166,8 @@ window.updateUI = updateUI;
 
 function renderSummaryMetrics(daily, weekly, monthly, goal) {
     const $dom = window.$dom;
+    if (!$dom.$dailyTotal) return; // DOM要素が未取得ならスキップ
+
     const dailyTotal = daily.minutes.toFixed(0);
     const weeklyTotal = weekly.minutes.toFixed(0);
     const monthlyTotal = monthly.minutes.toFixed(0);
@@ -166,12 +177,14 @@ function renderSummaryMetrics(daily, weekly, monthly, goal) {
     $dom.$dailyTotal.parentElement.querySelector('p:first-child').textContent = `本日 (${dailyTotal >= goal ? '目標達成!' : '目標まであと ' + Math.max(0, goal - dailyTotal).toFixed(0) + '分'})`;
     
     // 週間・月間合計
-    $dom.$weeklyTotal.innerHTML = `${weeklyTotal}<span class="text-sm font-semibold text-gray-500 ml-1">分</span>`;
-    $dom.$monthlyTotal.innerHTML = `${monthlyTotal}<span class="text-sm font-semibold text-gray-500 ml-1">分</span>`;
+    if ($dom.$weeklyTotal) $dom.$weeklyTotal.innerHTML = `${weeklyTotal}<span class="text-sm font-semibold text-gray-500 ml-1">分</span>`;
+    if ($dom.$monthlyTotal) $dom.$monthlyTotal.innerHTML = `${monthlyTotal}<span class="text-sm font-semibold text-gray-500 ml-1">分</span>`;
 }
 
 function renderDetailMetrics(dailyData) {
     const $dom = window.$dom;
+    if (!$dom.$detailMetrics) return; // DOM要素が未取得ならスキップ
+
     $dom.$detailMetrics.innerHTML = '';
     
     const metricsList = [
@@ -245,11 +258,12 @@ function handleInput(e) {
     updateUI();
 }
 
+/**
+ * アプリケーションの初期化。DOMContentLoaded後に実行されます。
+ */
 function initializeApp() {
     
-    // =================================================================
-    // 【重要修正箇所】DOM要素を確実に取得する
-    // =================================================================
+    // 1. DOM要素を確実に取得し、window.$domに格納
     const $id = window.$id;
     window.$dom = {
         $googleClientId: $id('googleClientId'),
@@ -281,38 +295,37 @@ function initializeApp() {
         $analysisTitle: $id('analysis-title'),
         $analysisContent: $id('analysis-content'),
     };
-
-    // 1. Load Data
+    
+    // 2. Load Data (Local Storageから状態を復元し、入力フィールドに反映)
     window.loadState();
     
-    // 2. Set Listeners
-    // DOM要素が確実に存在するため、安全にイベントリスナーを設定
-    window.$dom.$googleClientId.addEventListener('input', handleInput);
-    window.$dom.$geminiApiKey.addEventListener('input', handleInput);
-    window.$dom.$dailyGoalMinutes.addEventListener('input', handleInput);
-    window.$dom.$authButton.addEventListener('click', window.handleAuthClick);
-    window.$dom.$fetchButton.addEventListener('click', window.handleFetchClick);
-    window.$dom.$timerButton.addEventListener('click', handleTimerClick);
-    window.$dom.$analyzeButton.addEventListener('click', window.handleAnalyzeClick);
+    // 3. Set Listeners (防御的な設定: 要素がnullでないことを確認してからリスナーを設定)
+    const domElements = [
+        { id: '$googleClientId', handler: handleInput, event: 'input' },
+        { id: '$geminiApiKey', handler: handleInput, event: 'input' },
+        { id: '$dailyGoalMinutes', handler: handleInput, event: 'input' },
+        { id: '$authButton', handler: window.handleAuthClick, event: 'click' },
+        { id: '$fetchButton', handler: window.handleFetchClick, event: 'click' },
+        { id: '$timerButton', handler: handleTimerClick, event: 'click' },
+        { id: '$analyzeButton', handler: window.handleAnalyzeClick, event: 'click' },
+    ];
+    
+    domElements.forEach(({ id, handler, event }) => {
+        const element = window.$dom[id];
+        if (element) {
+            element.addEventListener(event, handler);
+        } else {
+            // エラーを特定するためにコンソールに出力
+            console.error(`DOM Error: Could not find element for ID '${id.substring(1)}'. Skipping addEventListener.`);
+            // ★ このエラーが出た場合、HTMLにそのIDを持つ要素がないことを意味します。
+        }
+    });
 
     
-    // 3. Initial UI Update
+    // 4. Initial UI Update
     updateUI(); 
     
-    // 4. Load GAPI and Auth2 libraries
-    window.addEventListener('load', () => {
-        gapi.load('client:auth2', () => {
-            // GAPIライブラリがロード完了
-            state.isGapiLoaded = true;
-            
-            // Client IDがあれば、GAPIクライアントの初期化を試みる
-            if (state.googleClientId) {
-                window.initGapiClient(); 
-            } else {
-                 // Client IDがない場合もUIを更新し、ボタンを「IDを入力してください」状態にする
-                 updateUI(); 
-            }
-        });
-    });
+    // 5. GAPIライブラリのロードを開始 (api-handlers.jsで定義)
+    window.initGapiLoader(); 
 }
 document.addEventListener('DOMContentLoaded', initializeApp);
