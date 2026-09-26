@@ -3,106 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#07090d">
-    <title>Astro Score: Pro Edition</title>
+    <meta name="theme-color" content="#05070a">
+    <meta name="description" content="AsfPro v3 — 天体撮影を、天候・暗夜・月・光害・天体高度から総合判定。">
+    <title>AsfPro v3 | 天体撮影予報</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 </head>
 <body>
-    <main class="container">
-        <header class="hero">
+<main class="container">
+    <header class="hero">
+        <div class="brand-row">
             <div class="eyebrow">ASTRONOMY WEATHER INTELLIGENCE</div>
-            <h1>ASTRO FORECAST <span>PRO</span></h1>
-            <p class="hero-sub">撮影条件を、天候・暗夜・月明かり・光害から総合判定。</p>
-        </header>
-
-        <div id="event-banner" class="event-banner" aria-live="polite">
-            <span class="event-icon">🔭</span>
-            <span id="event-text">Analysis Ready</span>
+            <span class="version">AsfPro v3</span>
         </div>
+        <h1>天体撮影予報 <span>PRO</span></h1>
+        <p class="hero-sub">空だけでなく「その天体が今どれだけ撮りやすいか」まで計算します。</p>
+    </header>
 
-        <div class="date-row">
-            <h2 id="target-date">WAITING FOR DATA...</h2>
-            <span id="data-status" class="data-status">READY</span>
+    <div id="event-banner" class="event-banner" aria-live="polite">
+        <span class="event-icon">🔭</span>
+        <span id="event-text">撮影条件を解析できます</span>
+    </div>
+
+    <div class="date-row">
+        <div>
+            <div class="mini-label">対象日</div>
+            <h2 id="target-date">データ待機中</h2>
         </div>
+        <span id="data-status" class="data-status">READY</span>
+    </div>
 
-        <section class="score-section" aria-label="Astro score">
-            <div class="score-circle-container" id="gauge">
-                <div class="score-inner">
-                    <span id="score-value">--</span>
-                    <span id="score-label">STRICT SCORE</span>
-                </div>
-            </div>
-            <div id="score-detail" class="score-detail">天文薄明終了後の時間だけで評価</div>
-        </section>
+    <section class="target-hero" aria-label="撮影対象">
+        <div>
+            <div class="mini-label">撮影対象</div>
+            <strong id="target-name">アンドロメダ銀河 M31</strong>
+            <p id="target-description">広がった銀河。月明かりの影響と天体高度を重視。</p>
+        </div>
+        <div class="target-chip" id="target-type">DSO</div>
+    </section>
 
-        <section class="summary-grid" aria-label="Forecast summary">
-            <div class="slm-box">
-                <div id="time-display" class="summary-main">BEST TIME: --:--</div>
-                <div id="slm-output" class="summary-text">条件計算中...</div>
-                <div class="sqm-display">Est. SQM <span id="val-sqm" class="sqm-val">--</span> <small>mag/arcsec²</small></div>
+    <section class="score-section" aria-label="撮影適性スコア">
+        <div class="score-circle-container" id="gauge">
+            <div class="score-inner">
+                <span id="score-value">--</span>
+                <span id="score-label">撮影適性</span>
             </div>
-            <div class="window-box">
-                <span class="summary-label">BEST WINDOW</span>
-                <strong id="best-window">--:-- → --:--</strong>
-                <span id="window-duration">-- h</span>
-            </div>
-        </section>
+        </div>
+        <div id="score-detail" class="score-detail">天文暗夜 + 天体高度 + 天候 + 月明かりで評価</div>
+    </section>
 
+    <section class="summary-grid" aria-label="最適撮影時間">
+        <div class="slm-box">
+            <div class="summary-label">最適時間</div>
+            <div id="time-display" class="summary-main">--:--</div>
+            <div id="slm-output" class="summary-text">条件計算中...</div>
+            <div class="sqm-display">推定夜空 <span id="val-sqm" class="sqm-val">--</span> <small>mag/arcsec²</small></div>
+        </div>
+        <div class="window-box">
+            <span class="summary-label">連続撮影ベスト窓</span>
+            <strong id="best-window">--:-- → --:--</strong>
+            <span id="window-duration">--</span>
+        </div>
+    </section>
+
+    <section class="target-grid" aria-label="天体情報">
+        <div class="target-metric"><span>高度</span><strong id="val-alt">--</strong><small>°</small></div>
+        <div class="target-metric"><span>方位</span><strong id="val-az">--</strong><small>°</small></div>
+        <div class="target-metric"><span>月離角</span><strong id="val-separation">--</strong><small>°</small></div>
+        <div class="target-metric"><span>月高度</span><strong id="val-moon-alt">--</strong><small>°</small></div>
+        <div class="target-metric"><span>月齢光量</span><strong id="val-moon-illum">--</strong><small>%</small></div>
+        <div class="target-metric"><span>天文暗夜</span><strong id="val-dark-hours">--</strong><small>h</small></div>
+    </section>
+
+    <section class="hourly-section" aria-label="時間帯ランキング">
+        <div class="section-title-row">
+            <div>
+                <div class="mini-label">時間帯分析</div>
+                <h3>今夜のトップ時間</h3>
+            </div>
+            <span id="threshold-note">基準 65点</span>
+        </div>
+        <div id="hour-ranking" class="hour-ranking"></div>
+        <div id="hour-timeline" class="hour-timeline"></div>
+    </section>
+
+    <section class="metrics-section" aria-label="天候データ">
+        <div class="section-title-row">
+            <div>
+                <div class="mini-label">WEATHER CORE</div>
+                <h3>撮影環境</h3>
+            </div>
+            <span id="coverage-note">--</span>
+        </div>
         <div class="metrics-grid">
-            <div class="metric-card"><span class="metric-label">CLOUD</span><span id="val-cloud" class="metric-value">--</span><span class="metric-unit">%</span></div>
-            <div class="metric-card"><span class="metric-label">RAIN PROB</span><span id="val-rain" class="metric-value">--</span><span class="metric-unit">%</span></div>
-            <div class="metric-card"><span class="metric-label">JET STREAM</span><span id="val-wind" class="metric-value">--</span><span class="metric-unit">m/s</span></div>
-            <div class="metric-card"><span class="metric-label">DEW GAP</span><span id="val-dew" class="metric-value">--</span><span class="metric-unit">°C</span></div>
-            <div class="metric-card"><span class="metric-label">VISIBILITY</span><span id="val-visibility" class="metric-value">--</span><span class="metric-unit">km</span></div>
-            <div class="metric-card"><span class="metric-label">LOW CLOUD</span><span id="val-low-cloud" class="metric-value">--</span><span class="metric-unit">%</span></div>
-            <div class="metric-card"><span class="metric-label">PRESSURE</span><span id="val-pressure" class="metric-value">--</span><span class="metric-unit">hPa</span></div>
-            <div class="metric-card"><span class="metric-label">DARK HOURS</span><span id="val-dark-hours" class="metric-value">--</span><span class="metric-unit">h</span></div>
+            <div class="metric-card"><span class="metric-label">総雲量</span><span id="val-cloud" class="metric-value">--</span><span class="metric-unit">%</span></div>
+            <div class="metric-card"><span class="metric-label">降水確率</span><span id="val-rain" class="metric-value">--</span><span class="metric-unit">%</span></div>
+            <div class="metric-card"><span class="metric-label">上空風 250hPa</span><span id="val-wind" class="metric-value">--</span><span class="metric-unit">m/s</span></div>
+            <div class="metric-card"><span class="metric-label">露点差</span><span id="val-dew" class="metric-value">--</span><span class="metric-unit">°C</span></div>
+            <div class="metric-card"><span class="metric-label">視程</span><span id="val-visibility" class="metric-value">--</span><span class="metric-unit">km</span></div>
+            <div class="metric-card"><span class="metric-label">低層雲</span><span id="val-low-cloud" class="metric-value">--</span><span class="metric-unit">%</span></div>
+            <div class="metric-card"><span class="metric-label">気圧</span><span id="val-pressure" class="metric-value">--</span><span class="metric-unit">hPa</span></div>
+            <div class="metric-card"><span class="metric-label">地上風</span><span id="val-ground-wind" class="metric-value">--</span><span class="metric-unit">m/s</span></div>
         </div>
+    </section>
 
-        <section class="controls" aria-label="Forecast controls">
-            <button class="gps-btn" onclick="useGPS()">⌖ GPSで現在地を取得</button>
+    <section class="controls" aria-label="予報設定">
+        <button class="gps-btn" onclick="useGPS()">⌖ 現在地を取得して解析</button>
 
-            <div class="control-row">
-                <label>
-                    <span>撮影日</span>
-                    <input type="date" id="date-input">
-                </label>
-                <label>
-                    <span>BORTLE</span>
-                    <select id="bortle-select">
-                        <option value="1">B1 — Excellent Dark</option>
-                        <option value="2">B2 — Dark</option>
-                        <option value="3">B3 — Rural</option>
-                        <option value="4">B4 — Rural/Suburban</option>
-                        <option value="5" selected>B5 — Suburban</option>
-                        <option value="6">B6 — Bright Suburban</option>
-                        <option value="7">B7 — Urban</option>
-                        <option value="8">B8 — City</option>
-                        <option value="9">B9 — Inner City</option>
-                    </select>
-                </label>
-            </div>
-
+        <div class="control-row">
             <label>
-                <span>撮影地</span>
-                <select id="location-select">
-                    <option value="" disabled selected>撮影地を選択</option>
-                    <option value="35.941,138.475" data-bortle="2">長野・野辺山 (B2)</option>
-                    <option value="34.168,136.098" data-bortle="2">奈良・大台ヶ原 (B2)</option>
-                    <option value="35.689,139.691" data-bortle="8">東京・新宿 (B8)</option>
+                <span>撮影日</span>
+                <input type="date" id="date-input">
+            </label>
+            <label>
+                <span>光害レベル（Bortle）</span>
+                <select id="bortle-select">
+                    <option value="1">B1 — 極めて暗い</option>
+                    <option value="2">B2 — 非常に暗い</option>
+                    <option value="3">B3 — 暗い郊外</option>
+                    <option value="4">B4 — 郊外</option>
+                    <option value="5" selected>B5 — 市街地周辺</option>
+                    <option value="6">B6 — 明るい郊外</option>
+                    <option value="7">B7 — 都市</option>
+                    <option value="8">B8 — 市街</option>
+                    <option value="9">B9 — 都心</option>
                 </select>
             </label>
-
-            <button class="primary" onclick="startAnalysis()">PREDICT NOW</button>
-        </section>
-
-        <div class="foot-note">
-            <span>FORECAST: Open-Meteo</span>
-            <span>•</span>
-            <span>SQM / Bortle は推定値</span>
         </div>
-    </main>
-    <script src="script.js"></script>
+
+        <label>
+            <span>撮影対象</span>
+            <select id="target-select">
+                <option value="m31">M31 アンドロメダ銀河</option>
+                <option value="m42">M42 オリオン大星雲</option>
+                <option value="ngc7000">NGC 7000 北アメリカ星雲</option>
+                <option value="mw">天の川中心付近</option>
+                <option value="moon">月</option>
+            </select>
+        </label>
+
+        <label>
+            <span>撮影地</span>
+            <select id="location-select">
+                <option value="" disabled selected>撮影地を選択</option>
+                <option value="35.941,138.475" data-bortle="2">長野・野辺山（B2）</option>
+                <option value="34.168,136.098" data-bortle="2">奈良・大台ヶ原（B2）</option>
+                <option value="31.595,130.559" data-bortle="3">鹿児島・桜島周辺（B3）</option>
+                <option value="35.689,139.691" data-bortle="8">東京・新宿（B8）</option>
+            </select>
+        </label>
+
+        <button class="primary" onclick="startAnalysis()">この条件で予報する</button>
+    </section>
+
+    <div class="foot-note">
+        <span>予報: Open-Meteo</span>
+        <span>•</span>
+        <span>天体位置: 簡易天文計算</span>
+        <span>•</span>
+        <span>SQM / Bortle は推定値</span>
+    </div>
+</main>
+<script src="script.js"></script>
 </body>
 </html>
