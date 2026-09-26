@@ -230,7 +230,7 @@ function scoreHour(data, i, lat, lon, bortle, target, utcOffsetSeconds) {
     if (solarAltitude > -18) return null;
 
     const moonRaw = SunCalc.getMoonPosition(date, lat, lon);
-    const target = Object.assign({ key: target.key }, targetPosition(target, date, lat, lon));
+    const positionedTarget = Object.assign({ key: target.key }, targetPosition(target, date, lat, lon));
     const p = {
         cloud: safeNum(data.cloud_cover?.[i], 100),
         cloudLow: safeNum(data.cloud_cover_low?.[i], safeNum(data.cloud_cover?.[i], 100)),
@@ -251,8 +251,8 @@ function scoreHour(data, i, lat, lon, bortle, target, utcOffsetSeconds) {
             azimuth: normalizeDeg(radToDeg(moonRaw.azimuth))
         },
         moonIllum: SunCalc.getMoonIllumination(date).fraction,
-        targetAltitude: target.altitude,
-        targetAzimuth: target.azimuth
+        targetAltitude: positionedTarget.altitude,
+        targetAzimuth: positionedTarget.azimuth
     };
     p.separation = horizontalSeparation({ altitude: p.targetAltitude, azimuth: p.targetAzimuth }, p.moon);
     p.dewGap = p.temp - p.dewPoint;
